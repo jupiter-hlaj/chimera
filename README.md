@@ -176,6 +176,14 @@ sam build
 sam deploy --guided
 ```
 
+### Manual Data Upload
+For data sources without public APIs (Schumann, GCP), upload files with the correct prefix:
+
+- **Schumann**: `s3://chimera-raw-dev-821891894512/schumann/uploads/YYYY-MM-DD.csv`
+- **GCP**: `s3://chimera-raw-dev-821891894512/gcp/uploads/YYYY-MM-DD.csv`
+
+The system will automatically process files in the `uploads/` folder when triggered.
+
 ### 3. Upload Dashboard
 
 After deployment, sync the frontend:
