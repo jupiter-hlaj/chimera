@@ -538,6 +538,22 @@ function renderPlanetaryData(data) {
 }
 
 function renderGeomagneticData(data) {
+    // Handle truncated data response
+    if (data && data.message && data.message.includes('truncated')) {
+        return `
+            <div class="data-cards-grid">
+                <div class="data-card">
+                    <div class="data-card-title">📊 Data Size</div>
+                    <div class="data-card-value">${Math.round(data.size / 1024)} KB</div>
+                    <div class="data-card-subtitle">Data too large to display in browser</div>
+                </div>
+            </div>
+            <p style="margin-top: var(--spacing-lg); color: var(--color-text-secondary);">
+                ✅ Data successfully ingested and stored in S3. View raw files in AWS Console.
+            </p>
+        `;
+    }
+
     if (!data || !Array.isArray(data)) {
         return '<p style="color: var(--color-text-muted);">No geomagnetic data available</p>';
     }
