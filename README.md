@@ -181,13 +181,13 @@ sam deploy --guided
 After deployment, sync the frontend:
 
 ```bash
-aws s3 sync frontend/ s3://chimera-dashboard-dev-<account-id>/ --delete
+aws s3 sync frontend/ s3://chimera-dashboard-dev-821891894512/ --delete
 ```
 
 ### 4. Access Dashboard
 
-- **Dashboard**: http://chimera-dashboard-dev-<account-id>.s3-website-us-east-1.amazonaws.com
-- **API**: https://<api-id>.execute-api.us-east-1.amazonaws.com/dev
+- **Dashboard**: http://chimera-dashboard-dev-821891894512.s3-website-us-east-1.amazonaws.com
+- **API**: https://cflufzjv1a.execute-api.us-east-1.amazonaws.com/dev
 
 ## 🔗 APIs & Data Sources
 
