@@ -79,28 +79,31 @@ def response(status_code: int, body: Any) -> dict:
     }
 
 
-def get_source_status(source_id: str) -> dict:
-    """Get the latest ingestion status for a source."""
+def get_source_status(source_prefix: str) -> dict:
+    """Get the latest ingestion status for a source prefix (e.g., 'planetary' matches 'planetary_Sun', 'planetary_Moon')."""
     if not METADATA_TABLE:
         return {'status': 'unknown', 'message': 'Metadata table not configured'}
     
     table = dynamodb.Table(METADATA_TABLE)
     
-    # Query latest record for this source
-    result = table.query(
-        KeyConditionExpression=Key('source_id').eq(source_id),
-        ScanIndexForward=False,  # Descending order
-        Limit=1
+    # Scan for records that begin with this source prefix
+    result = table.scan(
+        FilterExpression=Key('source_id').begins_with(f"{source_prefix}_")
     )
     
-    if result.get('Items'):
-        item = result['Items'][0]
+    items = result.get('Items', [])
+    
+    if items:
+        # Sort by ingestion_time descending and get the most recent
+        items_sorted = sorted(items, key=lambda x: x.get('ingestion_time', ''), reverse=True)
+        latest = items_sorted[0]
+        
         return {
-            'status': item.get('status', 'unknown'),
-            'last_timestamp': item.get('timestamp'),
-            'last_ingestion': item.get('ingestion_time'),
-            's3_key': item.get('s3_key', ''),
-            'record_count': item.get('record_count', 0)
+            'status': latest.get('status', 'unknown'),
+            'last_timestamp': latest.get('timestamp'),
+            'last_ingestion': latest.get('ingestion_time'),
+            's3_key': latest.get('s3_key', ''),
+            'record_count': len(items)  # Count of all records for this source type
         }
     
     return {'status': 'no_data', 'message': 'No ingestion records found'}
@@ -112,16 +115,8 @@ def handle_status(event: dict) -> dict:
     
     sources = []
     for source_key, source_info in DATA_SOURCES.items():
-        # Get status for each type of this source
-        status = get_source_status(f"{source_key}_")
-        
-        # Try with underscore suffix pattern
-        if status.get('status') == 'no_data':
-            # Try direct source_id pattern
-            for suffix in ['upload', source_key]:
-                status = get_source_status(f"{source_key}_{suffix}")
-                if status.get('status') != 'no_data':
-                    break
+        # Get status using prefix matching (e.g., 'planetary' finds 'planetary_Sun', etc.)
+        status = get_source_status(source_key)
         
         sources.append({
             'id': source_key,
@@ -191,7 +186,7 @@ def handle_data(event: dict, source: str) -> dict:
         return response(404, {'error': f'Unknown source: {source}'})
     
     # Get latest S3 key from metadata
-    status = get_source_status(f"{source}_")
+    status = get_source_status(source)
     
     if status.get('status') == 'no_data':
         return response(404, {'error': f'No data found for source: {source}'})
