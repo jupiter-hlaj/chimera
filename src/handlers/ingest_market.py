@@ -191,13 +191,14 @@ def lambda_handler(event: dict, context: Any) -> dict:
         end_date = event['end_date']
     else:
         target_date = event.get('date')
-        if not target_date:
-            yesterday = datetime.utcnow() - timedelta(days=1)
-            target_date = yesterday.strftime('%Y-%m-%d')
-        
-        # For single day, query a small range
-        start_date = target_date
-        end_date = (datetime.strptime(target_date, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
+        if target_date:
+            # Single day query
+            start_date = target_date
+            end_date = (datetime.strptime(target_date, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
+        else:
+            # Default: fetch last 30 days of data
+            end_date = datetime.utcnow().strftime('%Y-%m-%d')
+            start_date = (datetime.utcnow() - timedelta(days=30)).strftime('%Y-%m-%d')
     
     logger.info(f"Date range: {start_date} to {end_date}")
     logger.info(f"Symbols: {symbols}")
