@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >
   Chimera Data Ingestion Pipeline
@@ -13,10 +13,10 @@ Globals:
     Runtime: python3.12
     MemorySize: 512
     Architectures:
-      - x86_64  # Using x86_64 for fast CI builds (per CICD docs)
+      - x86_64 # Using x86_64 for fast CI builds (per CICD docs)
     Environment:
       Variables:
-        LOG_LEVEL: DEBUG  # Verbose logging during development
+        LOG_LEVEL: DEBUG # Verbose logging during development
         RAW_BUCKET: !Ref ChimeraRawBucket
         PROCESSED_BUCKET: !Ref ChimeraProcessedBucket
         METADATA_TABLE: !Ref ChimeraIngestionMetadata
@@ -38,11 +38,10 @@ Parameters:
 # RESOURCES
 # ============================================================================
 Resources:
-
   # --------------------------------------------------------------------------
   # S3 Buckets
   # --------------------------------------------------------------------------
-  
+
   ChimeraRawBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -80,7 +79,7 @@ Resources:
   # --------------------------------------------------------------------------
   # DynamoDB Table - Ingestion Metadata
   # --------------------------------------------------------------------------
-  
+
   # NOTE: Using Provisioned mode to stay in Free Tier (25 RCU/WCU free)
   ChimeraIngestionMetadata:
     Type: AWS::DynamoDB::Table
@@ -190,11 +189,98 @@ Resources:
         Project: Chimera
         DataSource: Yahoo-Finance
 
+  # --------------------------------------------------------------------------
+  # Dashboard API and Frontend
+  # --------------------------------------------------------------------------
+
+  ChimeraApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub chimera-api-${Environment}
+      StageName: !Ref Environment
+      Cors:
+        AllowOrigin: "'*'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowMethods: "'GET,OPTIONS'"
+
+  DashboardFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub chimera-dashboard-${Environment}
+      Description: Dashboard API for status and data retrieval
+      CodeUri: src/handlers/
+      Handler: dashboard_api.lambda_handler
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref ChimeraRawBucket
+        - DynamoDBReadPolicy:
+            TableName: !Ref ChimeraIngestionMetadata
+        - Statement:
+            - Effect: Allow
+              Action:
+                - lambda:GetFunction
+                - lambda:ListFunctions
+              Resource: "*"
+      Events:
+        GetStatus:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ChimeraApi
+            Path: /status
+            Method: GET
+        GetHealth:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ChimeraApi
+            Path: /health
+            Method: GET
+        GetData:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ChimeraApi
+            Path: /data/{source}
+            Method: GET
+        TriggerIngestion:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ChimeraApi
+            Path: /ingest/{source}
+            Method: POST
+
+  # Dashboard static website bucket
+  DashboardBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub chimera-dashboard-${Environment}-${AWS::AccountId}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+      Tags:
+        - Key: Project
+          Value: Chimera
+        - Key: Environment
+          Value: !Ref Environment
+
+  DashboardBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DashboardBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub arn:aws:s3:::${DashboardBucket}/*
+
 # ============================================================================
 # OUTPUTS
 # ============================================================================
 Outputs:
-  
   RawBucketName:
     Description: S3 bucket for raw ingested data
     Value: !Ref ChimeraRawBucket
@@ -232,3 +318,15 @@ Outputs:
   IngestMarketFunctionArn:
     Description: ARN of the market data ingestion function
     Value: !GetAtt IngestMarketFunction.Arn
+
+  DashboardApiUrl:
+    Description: Dashboard API URL
+    Value: !Sub https://${ChimeraApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
+
+  DashboardWebsiteUrl:
+    Description: Dashboard website URL
+    Value: !GetAtt DashboardBucket.WebsiteURL
+
+  DashboardBucketName:
+    Description: Dashboard S3 bucket name
+    Value: !Ref DashboardBucket

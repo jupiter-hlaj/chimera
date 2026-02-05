@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chimera Dashboard</title>
+    <meta name="description" content="Chimera Data Ingestion Monitoring Dashboard">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">🔥</span>
+                    <h1>Chimera</h1>
+                </div>
+                <div class="header-meta">
+                    <span class="env-badge" id="environment">dev</span>
+                    <span class="status-indicator" id="system-status">
+                        <span class="status-dot"></span>
+                        Checking...
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- System Health Card -->
+            <section class="health-section">
+                <div class="section-header">
+                    <h2>System Health</h2>
+                    <button class="btn btn-secondary" id="refresh-btn">
+                        <span class="btn-icon">↻</span>
+                        Refresh
+                    </button>
+                </div>
+                <div class="health-grid" id="health-grid">
+                    <!-- Populated by JavaScript -->
+                    <div class="health-card loading">
+                        <div class="spinner"></div>
+                        <span>Loading health status...</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Data Sources Grid -->
+            <section class="sources-section">
+                <div class="section-header">
+                    <h2>Data Sources</h2>
+                    <span class="last-updated" id="last-updated">Last updated: --</span>
+                </div>
+                <div class="sources-grid" id="sources-grid">
+                    <!-- Populated by JavaScript -->
+                    <div class="source-card loading">
+                        <div class="spinner"></div>
+                        <span>Loading data sources...</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Activity Log -->
+            <section class="activity-section">
+                <div class="section-header">
+                    <h2>Recent Activity</h2>
+                </div>
+                <div class="activity-log" id="activity-log">
+                    <div class="activity-item">
+                        <span class="activity-time">--:--</span>
+                        <span class="activity-message">Waiting for data...</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <span>Chimera Data Ingestion System</span>
+                <span>•</span>
+                <span id="api-url">API: Not configured</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Config Modal -->
+    <div class="modal" id="config-modal">
+        <div class="modal-content">
+            <h3>Configure API URL</h3>
+            <input type="text" id="api-input" placeholder="https://xxx.execute-api.us-east-1.amazonaws.com/dev">
+            <div class="modal-actions">
+                <button class="btn btn-primary" id="save-config">Save</button>
+                <button class="btn btn-secondary" id="cancel-config">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
