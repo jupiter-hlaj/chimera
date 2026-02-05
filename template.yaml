@@ -220,6 +220,7 @@ Resources:
               Action:
                 - lambda:GetFunction
                 - lambda:ListFunctions
+                - lambda:InvokeFunction
               Resource: "*"
       Events:
         GetStatus:
