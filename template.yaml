@@ -1,0 +1,234 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Chimera Data Ingestion Pipeline
+  Serverless infrastructure for ingesting esoteric environmental data
+
+# ============================================================================
+# GLOBALS
+# ============================================================================
+Globals:
+  Function:
+    Timeout: 300
+    Runtime: python3.12
+    MemorySize: 512
+    Architectures:
+      - x86_64  # Using x86_64 for fast CI builds (per CICD docs)
+    Environment:
+      Variables:
+        LOG_LEVEL: DEBUG  # Verbose logging during development
+        RAW_BUCKET: !Ref ChimeraRawBucket
+        PROCESSED_BUCKET: !Ref ChimeraProcessedBucket
+        METADATA_TABLE: !Ref ChimeraIngestionMetadata
+
+# ============================================================================
+# PARAMETERS
+# ============================================================================
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Deployment environment
+
+# ============================================================================
+# RESOURCES
+# ============================================================================
+Resources:
+
+  # --------------------------------------------------------------------------
+  # S3 Buckets
+  # --------------------------------------------------------------------------
+  
+  ChimeraRawBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub chimera-raw-${Environment}-${AWS::AccountId}
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Project
+          Value: Chimera
+        - Key: Environment
+          Value: !Ref Environment
+
+  ChimeraProcessedBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub chimera-processed-${Environment}-${AWS::AccountId}
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Project
+          Value: Chimera
+        - Key: Environment
+          Value: !Ref Environment
+
+  # --------------------------------------------------------------------------
+  # DynamoDB Table - Ingestion Metadata
+  # --------------------------------------------------------------------------
+  
+  # NOTE: Using Provisioned mode to stay in Free Tier (25 RCU/WCU free)
+  ChimeraIngestionMetadata:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub chimera-ingestion-metadata-${Environment}
+      BillingMode: PROVISIONED
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      AttributeDefinitions:
+        - AttributeName: source_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: source_id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      Tags:
+        - Key: Project
+          Value: Chimera
+        - Key: Environment
+          Value: !Ref Environment
+
+  # --------------------------------------------------------------------------
+  # Lambda Functions - Data Ingestion
+  # --------------------------------------------------------------------------
+
+  IngestPlanetaryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub chimera-ingest-planetary-${Environment}
+      Description: Ingests planetary position data from NASA JPL Horizons API
+      CodeUri: src/handlers/
+      Handler: ingest_planetary.lambda_handler
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ChimeraRawBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ChimeraIngestionMetadata
+      Tags:
+        Project: Chimera
+        DataSource: NASA-JPL
+
+  IngestGeomagneticFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub chimera-ingest-geomagnetic-${Environment}
+      Description: Ingests geomagnetic/solar data from NOAA SWPC
+      CodeUri: src/handlers/
+      Handler: ingest_geomagnetic.lambda_handler
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ChimeraRawBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ChimeraIngestionMetadata
+      Tags:
+        Project: Chimera
+        DataSource: NOAA-SWPC
+
+  IngestSchumannFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub chimera-ingest-schumann-${Environment}
+      Description: Processes Schumann Resonance data from uploaded files
+      CodeUri: src/handlers/
+      Handler: ingest_schumann.lambda_handler
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ChimeraRawBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ChimeraIngestionMetadata
+      Tags:
+        Project: Chimera
+        DataSource: HeartMath-Zenodo
+
+  IngestGCPFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub chimera-ingest-gcp-${Environment}
+      Description: Processes Global Consciousness Project data from uploaded files
+      CodeUri: src/handlers/
+      Handler: ingest_gcp.lambda_handler
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ChimeraRawBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ChimeraIngestionMetadata
+      Tags:
+        Project: Chimera
+        DataSource: GCP2
+
+  IngestMarketFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub chimera-ingest-market-${Environment}
+      Description: Ingests market data from Yahoo Finance
+      CodeUri: src/handlers/
+      Handler: ingest_market.lambda_handler
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ChimeraRawBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ChimeraIngestionMetadata
+      Tags:
+        Project: Chimera
+        DataSource: Yahoo-Finance
+
+# ============================================================================
+# OUTPUTS
+# ============================================================================
+Outputs:
+  
+  RawBucketName:
+    Description: S3 bucket for raw ingested data
+    Value: !Ref ChimeraRawBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-RawBucket
+
+  ProcessedBucketName:
+    Description: S3 bucket for processed Parquet data
+    Value: !Ref ChimeraProcessedBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-ProcessedBucket
+
+  MetadataTableName:
+    Description: DynamoDB table for ingestion metadata
+    Value: !Ref ChimeraIngestionMetadata
+    Export:
+      Name: !Sub ${AWS::StackName}-MetadataTable
+
+  IngestPlanetaryFunctionArn:
+    Description: ARN of the planetary data ingestion function
+    Value: !GetAtt IngestPlanetaryFunction.Arn
+
+  IngestGeomagneticFunctionArn:
+    Description: ARN of the geomagnetic data ingestion function
+    Value: !GetAtt IngestGeomagneticFunction.Arn
+
+  IngestSchumannFunctionArn:
+    Description: ARN of the Schumann data ingestion function
+    Value: !GetAtt IngestSchumannFunction.Arn
+
+  IngestGCPFunctionArn:
+    Description: ARN of the GCP data ingestion function
+    Value: !GetAtt IngestGCPFunction.Arn
+
+  IngestMarketFunctionArn:
+    Description: ARN of the market data ingestion function
+    Value: !GetAtt IngestMarketFunction.Arn

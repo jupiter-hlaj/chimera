@@ -1,0 +1,8 @@
+{
+    "date": "2014-01-01",
+    "body_ids": [
+        "10",
+        "301"
+    ],
+    "comment": "Sample event for testing planetary ingestion. Fetches Sun and Moon data for Jan 1, 2014."
+}
