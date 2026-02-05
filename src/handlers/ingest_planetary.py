@@ -40,6 +40,9 @@ CELESTIAL_BODIES = {
     '499': 'Mars',
     '599': 'Jupiter',
     '699': 'Saturn',
+    '799': 'Uranus',
+    '899': 'Neptune',
+    '999': 'Pluto',
 }
 
 
