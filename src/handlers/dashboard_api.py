@@ -178,38 +178,82 @@ def handle_health(event: dict) -> dict:
     return response(status_code, health)
 
 
+def get_all_source_keys(source_prefix: str) -> list:
+    """Get the latest S3 key for EACH unique sub-entity (e.g. Sun, Moon, Mars) for a source."""
+    if not METADATA_TABLE:
+        return []
+    
+    table = dynamodb.Table(METADATA_TABLE)
+    
+    # Scan for all records with this prefix
+    result = table.scan(
+        FilterExpression=Key('source_id').begins_with(f"{source_prefix}_")
+    )
+    
+    items = result.get('Items', [])
+    if not items:
+        return []
+
+    # Group by source_id (e.g. planetary_Sun, planetary_Mars) and pick the latest for each
+    latest_by_entity = {}
+    for item in items:
+        entity = item['source_id']
+        timestamp = item.get('ingestion_time', '')
+        
+        if entity not in latest_by_entity or timestamp > latest_by_entity[entity]['ingestion_time']:
+            latest_by_entity[entity] = item
+            
+    return list(latest_by_entity.values())
+
+
 def handle_data(event: dict, source: str) -> dict:
-    """Handle GET /data/{source} - return latest data for a source."""
+    """Handle GET /data/{source} - return latest aggregated data for a source."""
     logger.info(f"Handling /data/{source} request")
     
     if source not in DATA_SOURCES:
         return response(404, {'error': f'Unknown source: {source}'})
     
-    # Get latest S3 key from metadata
-    status = get_source_status(source)
+    # Get latest items for all sub-entities
+    latest_items = get_all_source_keys(source)
     
-    if status.get('status') == 'no_data':
+    if not latest_items:
         return response(404, {'error': f'No data found for source: {source}'})
     
-    s3_key = status.get('s3_key', '')
+    aggregated_data = {}
+    total_size = 0
+    MAX_SIZE = 5 * 1024 * 1024  # 5MB safety limit
     
-    if not s3_key:
-        return response(404, {'error': f'No S3 key found for source: {source}'})
-    
-    # Fetch data from S3
-    try:
-        obj = s3_client.get_object(Bucket=RAW_BUCKET, Key=s3_key)
-        data = json.loads(obj['Body'].read().decode('utf-8'))
-        
-        return response(200, {
-            'source': source,
-            's3_key': s3_key,
-            'last_modified': obj['LastModified'],
-            'data': data if len(str(data)) < 50000 else {'message': 'Data truncated', 'size': len(str(data))}
-        })
-    except Exception as e:
-        logger.error(f"Error fetching data: {e}")
-        return response(500, {'error': str(e)})
+    # fetch data for each entity
+    for item in latest_items:
+        s3_key = item.get('s3_key')
+        if not s3_key:
+            continue
+            
+        try:
+            entity_name = item['source_id'].replace(f"{source}_", "")
+            
+            obj = s3_client.get_object(Bucket=RAW_BUCKET, Key=s3_key)
+            content = obj['Body'].read().decode('utf-8')
+            
+            # Check size before parsing/adding
+            if total_size + len(content) > MAX_SIZE:
+                 aggregated_data[entity_name] = {'message': 'Data truncated (payload too large)', 's3_key': s3_key}
+                 continue
+
+            data = json.loads(content)
+            aggregated_data[entity_name] = data
+            total_size += len(content)
+            
+        except Exception as e:
+            logger.error(f"Error fetching {s3_key}: {e}")
+            continue
+
+    return response(200, {
+        'source': source,
+        'timestamp': datetime.utcnow().isoformat(),
+        'entities': list(aggregated_data.keys()),
+        'data': aggregated_data
+    })
 
 
 def handle_ingest(event: dict, source: str) -> dict:

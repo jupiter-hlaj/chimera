@@ -448,17 +448,85 @@ function hideDataModal() {
     elements.dataModal.classList.remove('active');
 }
 
+
 function renderDataVisualization(source, data) {
-    switch (source) {
-        case 'market':
-            return renderMarketData(data);
-        case 'planetary':
-            return renderPlanetaryData(data);
-        case 'geomagnetic':
-            return renderGeomagneticData(data);
-        default:
-            return renderGenericData(data);
+    if (!data || Object.keys(data).length === 0) {
+        return '<p style="color: var(--color-text-muted);">No data available</p>';
     }
+
+    // Generate tabs for entities
+    const entities = Object.keys(data).sort();
+    let html = `
+        <div class="entity-tabs" style="display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 10px;">
+            ${entities.map((entity, index) => `
+                <button class="btn btn-secondary entity-tab ${index === 0 ? 'active' : ''}" 
+                    style="${index === 0 ? 'background: var(--color-accent-primary); color: white;' : ''}"
+                    onclick="switchEntityTab(this, '${entity}')">
+                    ${entity}
+                </button>
+            `).join('')}
+        </div>
+    `;
+
+    // Generate content for each entity
+    entities.forEach((entity, index) => {
+        html += `<div id="entity-${entity}" class="entity-content" style="${index === 0 ? 'display: block;' : 'display: none;'}">`;
+
+        const entityData = data[entity];
+
+        // Handle truncated data special case
+        if (entityData && entityData.message && entityData.message.includes('truncated')) {
+            html += `
+                <div class="data-cards-grid">
+                    <div class="data-card">
+                        <div class="data-card-title">📊 Data Size</div>
+                        <div class="data-card-value">${Math.round((entityData.size || 0) / 1024)} KB</div>
+                        <div class="data-card-subtitle">Data too large to display in browser</div>
+                        <div style="margin-top: 10px; font-size: 0.8em; color: var(--color-text-muted); word-break: break-all;">S3 Key: ${entityData.s3_key || 'Unknown'}</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            switch (source) {
+                case 'market':
+                    html += renderMarketData(entityData);
+                    break;
+                case 'planetary':
+                    html += renderPlanetaryData(entityData);
+                    break;
+                case 'geomagnetic':
+                    html += renderGeomagneticData(entityData);
+                    break;
+                default:
+                    html += renderGenericData(entityData);
+            }
+        }
+
+        html += `</div>`;
+    });
+
+    // Add tab switching script to global scope if not exists
+    if (!window.switchEntityTab) {
+        window.switchEntityTab = function (btn, entityId) {
+            // Reset all tabs
+            document.querySelectorAll('.entity-tab').forEach(t => {
+                t.style.background = '';
+                t.style.color = '';
+                t.classList.remove('active');
+            });
+            // Activate clicked tab
+            btn.style.background = 'var(--color-accent-primary)';
+            btn.style.color = 'white';
+            btn.classList.add('active');
+
+            // Hide all content
+            document.querySelectorAll('.entity-content').forEach(c => c.style.display = 'none');
+            // Show selected content
+            document.getElementById(`entity-${entityId}`).style.display = 'block';
+        };
+    }
+
+    return html;
 }
 
 function renderMarketData(data) {
@@ -466,11 +534,18 @@ function renderMarketData(data) {
         return '<p style="color: var(--color-text-muted);">No market data available</p>';
     }
 
+    // Sort by date descending
+    const sortedData = [...data].sort((a, b) => new Date(b.Date || b.date) - new Date(a.Date || a.date));
+
     return `
         <div class="stats-summary">
             <div class="stat-item">
                 <div class="stat-value">${data.length}</div>
-                <div class="stat-label">Records</div>
+                <div class="stat-label">Days</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${sortedData[0]?.Close?.toFixed(2) || sortedData[0]?.close?.toFixed(2) || '--'}</div>
+                <div class="stat-label">Last Close</div>
             </div>
         </div>
         <table class="data-table">
@@ -485,7 +560,7 @@ function renderMarketData(data) {
                 </tr>
             </thead>
             <tbody>
-                ${data.slice(0, 50).map(row => `
+                ${sortedData.slice(0, 100).map(row => `
                     <tr>
                         <td>${row.Date || row.date || '--'}</td>
                         <td>$${Number(row.Open || row.open || 0).toFixed(2)}</td>
@@ -501,64 +576,33 @@ function renderMarketData(data) {
 }
 
 function renderPlanetaryData(data) {
-    // NASA JPL Horizons returns ephemeris data in a specific format
-    if (!data) {
-        return '<p style="color: var(--color-text-muted);">No planetary data available</p>';
-    }
+    if (!data) return '<p>No data</p>';
 
-    // Extract key info from Horizons response
+    // Check if it's new aggregated format or legacy
     const result = data.result || '';
+    if (!result) return '<p>Invalid planetary data format</p>';
+
     const targetBody = result.match(/Target body name: ([^\n]+)/)?.[1] || 'Unknown';
-    const centerBody = result.match(/Center body name: ([^\n]+)/)?.[1] || 'Unknown';
 
     return `
         <div class="data-cards-grid">
             <div class="data-card">
-                <div class="data-card-title">🎯 Target Body</div>
+                <div class="data-card-title">🎯 Target</div>
                 <div class="data-card-subtitle">${targetBody}</div>
-            </div>
-            <div class="data-card">
-                <div class="data-card-title">🌐 Reference</div>
-                <div class="data-card-subtitle">${centerBody}</div>
-            </div>
-            <div class="data-card">
-                <div class="data-card-title">📡 API Version</div>
-                <div class="data-card-subtitle">${data.signature?.version || 'v1.0'}</div>
-            </div>
-            <div class="data-card">
-                <div class="data-card-title">📅 Source</div>
-                <div class="data-card-subtitle">${data.signature?.source || 'NASA JPL Horizons'}</div>
             </div>
         </div>
         <div style="margin-top: var(--spacing-xl);">
-            <h4 style="margin-bottom: var(--spacing-md); color: var(--color-text-secondary);">Ephemeris Data Preview</h4>
-            <pre style="background: var(--color-bg-secondary); padding: var(--spacing-lg); border-radius: var(--radius-md); overflow-x: auto; font-size: var(--font-size-xs); max-height: 300px; overflow-y: auto;"><code>${escapeHtml(result.substring(0, 3000))}</code></pre>
+            <pre style="background: var(--color-bg-secondary); padding: var(--spacing-lg); border-radius: var(--radius-md); overflow-x: auto; font-size: var(--font-size-xs); max-height: 500px; overflow-y: auto;"><code>${escapeHtml(result)}</code></pre>
         </div>
     `;
 }
 
 function renderGeomagneticData(data) {
-    // Handle truncated data response
-    if (data && data.message && data.message.includes('truncated')) {
-        return `
-            <div class="data-cards-grid">
-                <div class="data-card">
-                    <div class="data-card-title">📊 Data Size</div>
-                    <div class="data-card-value">${Math.round(data.size / 1024)} KB</div>
-                    <div class="data-card-subtitle">Data too large to display in browser</div>
-                </div>
-            </div>
-            <p style="margin-top: var(--spacing-lg); color: var(--color-text-secondary);">
-                ✅ Data successfully ingested and stored in S3. View raw files in AWS Console.
-            </p>
-        `;
-    }
-
     if (!data || !Array.isArray(data)) {
-        return '<p style="color: var(--color-text-muted);">No geomagnetic data available</p>';
+        return '<p style="color: var(--color-text-muted);">No geomagnetic records available</p>';
     }
 
-    const latestItems = data.slice(0, 20);
+    const latestItems = data.slice(0, 50);
 
     return `
         <div class="stats-summary">
@@ -567,31 +611,29 @@ function renderGeomagneticData(data) {
                 <div class="stat-label">Records</div>
             </div>
         </div>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    ${Object.keys(latestItems[0] || {}).slice(0, 6).map(key => `<th>${key}</th>`).join('')}
-                </tr>
-            </thead>
-            <tbody>
-                ${latestItems.map(row => `
+        <div style="overflow-x: auto;">
+            <table class="data-table">
+                <thead>
                     <tr>
-                        ${Object.values(row).slice(0, 6).map(val => `<td>${val}</td>`).join('')}
+                        ${Object.keys(latestItems[0] || {}).map(key => `<th>${key}</th>`).join('')}
                     </tr>
-                `).join('')}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    ${latestItems.map(row => `
+                        <tr>
+                            ${Object.values(row).map(val => `<td>${val}</td>`).join('')}
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
     `;
 }
 
 function renderGenericData(data) {
-    if (!data) {
-        return '<p style="color: var(--color-text-muted);">No data available</p>';
-    }
-
     const jsonStr = JSON.stringify(data, null, 2);
     return `
-        <pre style="background: var(--color-bg-secondary); padding: var(--spacing-lg); border-radius: var(--radius-md); overflow-x: auto; font-size: var(--font-size-sm); max-height: 500px; overflow-y: auto;"><code>${escapeHtml(jsonStr.substring(0, 10000))}</code></pre>
+        <pre style="background: var(--color-bg-secondary); padding: var(--spacing-lg); border-radius: var(--radius-md); overflow-x: auto; font-size: var(--font-size-sm); max-height: 500px; overflow-y: auto;"><code>${escapeHtml(jsonStr.substring(0, 20000))}</code></pre>
     `;
 }
 
