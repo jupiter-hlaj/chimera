@@ -279,6 +279,40 @@ function renderSources(sources) {
             }
         });
     });
+
+    // View Data button listeners
+    document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const source = btn.dataset.source;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;"></span>';
+            try {
+                const response = await fetch(`${CONFIG.apiUrl}/data/${source}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const result = await response.json();
+
+                // Show data in a modal or alert
+                const dataStr = JSON.stringify(result.data, null, 2);
+                const truncated = dataStr.length > 2000 ? dataStr.substring(0, 2000) + '\n...(truncated)' : dataStr;
+
+                logActivity(`Fetched ${source} data: ${result.s3_key}`);
+                alert(`${source.toUpperCase()} Data:\n\nS3 Key: ${result.s3_key}\n\n${truncated}`);
+
+                btn.innerHTML = 'View Data';
+                btn.disabled = false;
+            } catch (error) {
+                logActivity(`Failed to fetch ${source} data: ${error.message}`);
+                btn.innerHTML = '✗ No Data';
+                setTimeout(() => {
+                    btn.innerHTML = 'View Data';
+                    btn.disabled = false;
+                }, 2000);
+            }
+        });
+    });
 }
 
 function renderActivityLog() {
