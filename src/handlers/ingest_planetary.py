@@ -73,7 +73,7 @@ def fetch_planetary_data(body_id: str, start_date: str, end_date: str) -> dict:
         'OUT_UNITS': 'KM-S',
     }
     
-    url = f"{HORIZONS_API_URL}?{urlencode(params, safe=\"'\")})"
+    url = f"{HORIZONS_API_URL}?{urlencode(params, safe="'")}"
     logger.debug(f"Request URL: {url}")
     
     response = requests.get(url, timeout=60)
