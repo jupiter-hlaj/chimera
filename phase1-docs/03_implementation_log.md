@@ -284,13 +284,55 @@ gh repo create chimera --private --source=. --remote=origin
 
 ## Pending Actions
 
-1. Check GitHub Actions deployment status
-2. Validate SAM template with new resources
-3. Commit and push dashboard changes
-4. Deploy complete stack
-5. Upload frontend to S3
-6. Verify dashboard in browser
-7. Create walkthrough with screenshots
+1. ~Check GitHub Actions deployment status~ ✅
+2. ~Validate SAM template with new resources~ ✅
+3. ~Commit and push dashboard changes~ ✅
+4. ~Deploy complete stack~ ✅
+5. ~Upload frontend to S3~ ✅
+6. ~Verify dashboard in browser~ ✅
+7. ~Create walkthrough with screenshots~ ✅
+
+---
+
+## Session 4: Bug Fixes and Documentation
+
+### 2026-02-05T16:45:00 - User Reported Trigger Failures
+
+**Error:** "Failed to trigger planetary: Trigger failed: 500"
+
+**Root Cause:** Dashboard Lambda missing `lambda:InvokeFunction` permission
+
+**Fix Applied:** Added permission to `template.yaml`:
+```yaml
+- lambda:InvokeFunction
+```
+
+**Commit:** `b34a441` - "fix: add lambda:InvokeFunction permission for dashboard triggers"
+
+---
+
+### 2026-02-05T16:48:00 - Verified Fix
+
+**Command:** `curl -X POST /ingest/planetary`
+**Result:** 
+```json
+{"message": "Ingestion triggered for planetary", "status_code": 202}
+```
+
+---
+
+### 2026-02-05T16:50:00 - Created Project README
+
+**User Request:** "the project needs a README using grand-river-current as template"
+
+**Action:**
+- Fetched template from `github.com/jupiter-hlaj/grand-river-current`
+- Created comprehensive `README.md` with:
+  - Mermaid architecture diagram
+  - Project structure tree
+  - Deployment instructions
+  - API documentation table
+  - Links to phase1-docs/
 
 ---
 
@@ -298,6 +340,7 @@ gh repo create chimera --private --source=. --remote=origin
 
 | File | Path | Purpose |
 |------|------|---------|
+| README.md | chimera/ | Main project documentation |
 | task.md | artifacts/ | Task tracking |
 | implementation_plan.md | artifacts/ | Plan document |
 | walkthrough.md | artifacts/ | Completion summary |
@@ -330,7 +373,20 @@ gh repo create chimera --private --source=. --remote=origin
 |--------|---------|-------|
 | 1587179 | feat: Phase 1 data ingestion infrastructure scaffold | 21 |
 | 2fa7412 | ci: add GitHub Actions deployment workflow | 1 |
+| cc4d3c7 | feat: add Dashboard API and frontend | 6 |
+| b34a441 | fix: add lambda:InvokeFunction permission for dashboard triggers | 1 |
 
 ---
 
-*Log continues as work progresses...*
+## Documentation Checklist
+
+- [x] `README.md` - Main project documentation with architecture diagram
+- [x] `phase1-docs/01_api_research.md` - Detailed API research (~15KB)
+- [x] `phase1-docs/02_architecture_decisions.md` - Design rationale (~10KB)
+- [x] `phase1-docs/03_implementation_log.md` - This log (~9KB+)
+- [x] `phase1-docs/README.md` - Documentation folder overview
+
+---
+
+*Log complete. Phase 1 fully documented.*
+
