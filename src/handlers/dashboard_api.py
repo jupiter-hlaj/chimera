@@ -102,7 +102,7 @@ def get_source_status(source_prefix: str) -> dict:
             'status': latest.get('status', 'unknown'),
             'last_timestamp': latest.get('timestamp'),
             'last_ingestion': latest.get('ingestion_time'),
-            's3_key': latest.get('s3_key', ''),
+            's3_key': latest.get('s3_key') or latest.get('processed_key', ''),
             'record_count': len(items)  # Count of all records for this source type
         }
     
@@ -225,7 +225,7 @@ def handle_data(event: dict, source: str) -> dict:
     
     # fetch data for each entity
     for item in latest_items:
-        s3_key = item.get('s3_key')
+        s3_key = item.get('s3_key') or item.get('processed_key')
         if not s3_key:
             continue
             
