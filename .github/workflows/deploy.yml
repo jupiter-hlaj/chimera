@@ -1,0 +1,67 @@
+name: Deploy Chimera
+
+on:
+    push:
+        branches: [main]
+    workflow_dispatch: # Allow manual triggers
+
+permissions:
+    id-token: write # Required for OIDC
+    contents: read
+
+env:
+    AWS_REGION: us-east-1
+    STACK_NAME: chimera-data-ingestion-dev
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+
+            - name: Configure AWS credentials (OIDC)
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+                  aws-region: ${{ env.AWS_REGION }}
+
+            - name: Set up SAM CLI
+              uses: aws-actions/setup-sam@v2
+              with:
+                  use-installer: true
+
+            - name: SAM Build
+              run: sam build
+
+            - name: SAM Deploy
+              run: |
+                  sam deploy \
+                    --stack-name ${{ env.STACK_NAME }} \
+                    --no-confirm-changeset \
+                    --no-fail-on-empty-changeset \
+                    --capabilities CAPABILITY_IAM \
+                    --parameter-overrides Environment=dev
+
+            - name: Get Stack Outputs
+              id: stack-outputs
+              run: |
+                  echo "### 🚀 Deployment Complete" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  aws cloudformation describe-stacks \
+                    --stack-name ${{ env.STACK_NAME }} \
+                    --query "Stacks[0].Outputs[*].{Key:OutputKey,Value:OutputValue}" \
+                    --output table >> $GITHUB_STEP_SUMMARY
+
+            - name: Health Check
+              run: |
+                  # Verify Lambda functions exist
+                  aws lambda list-functions \
+                    --query "Functions[?starts_with(FunctionName, 'chimera')].FunctionName" \
+                    --output table
