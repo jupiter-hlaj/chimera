@@ -114,7 +114,7 @@ def process_gcp_file(s3_key: str) -> dict:
         Body=df.to_json(orient='records', date_format='iso'),
         ContentType='application/json',
         Metadata={
-            'source': 'gcp2-upload',
+            'source': 'gcp-upload',
             'original_file': s3_key,
             'record_count': str(len(df)),
             'processing_time': datetime.utcnow().isoformat(),
@@ -148,7 +148,7 @@ def record_metadata(s3_key: str, result: dict, status: str) -> None:
     
     table.put_item(
         Item={
-            'source_id': 'gcp2_upload',
+            'source_id': 'gcp_upload',
             'timestamp': datetime.utcnow().isoformat(),
             'original_key': s3_key,
             'processed_key': result.get('processed_key', ''),
