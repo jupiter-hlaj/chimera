@@ -34,7 +34,15 @@ const elements = {
     configModal: document.getElementById('config-modal'),
     apiInput: document.getElementById('api-input'),
     saveConfig: document.getElementById('save-config'),
-    cancelConfig: document.getElementById('cancel-config')
+    cancelConfig: document.getElementById('cancel-config'),
+    // Data modal
+    dataModal: document.getElementById('data-modal'),
+    dataModalTitle: document.getElementById('data-modal-title'),
+    dataS3Key: document.getElementById('data-s3-key'),
+    dataLastModified: document.getElementById('data-last-modified'),
+    dataContent: document.getElementById('data-content'),
+    dataViewer: document.getElementById('data-viewer'),
+    closeDataModal: document.getElementById('close-data-modal')
 };
 
 // ============================================================================
@@ -294,12 +302,8 @@ function renderSources(sources) {
                 }
                 const result = await response.json();
 
-                // Show data in a modal or alert
-                const dataStr = JSON.stringify(result.data, null, 2);
-                const truncated = dataStr.length > 2000 ? dataStr.substring(0, 2000) + '\n...(truncated)' : dataStr;
-
                 logActivity(`Fetched ${source} data: ${result.s3_key}`);
-                alert(`${source.toUpperCase()} Data:\n\nS3 Key: ${result.s3_key}\n\n${truncated}`);
+                showDataModal(source, result);
 
                 btn.innerHTML = 'View Data';
                 btn.disabled = false;
@@ -412,6 +416,174 @@ elements.apiInput.addEventListener('keypress', (e) => {
 elements.configModal.addEventListener('click', (e) => {
     if (e.target === elements.configModal) hideConfigModal();
 });
+
+// Data modal event listeners
+elements.closeDataModal?.addEventListener('click', hideDataModal);
+elements.dataModal?.addEventListener('click', (e) => {
+    if (e.target === elements.dataModal) hideDataModal();
+});
+
+// ============================================================================
+// Data Modal Functions
+// ============================================================================
+function showDataModal(source, result) {
+    const icons = {
+        planetary: '🪐',
+        geomagnetic: '🧲',
+        schumann: '🌍',
+        gcp: '🧠',
+        market: '📈'
+    };
+
+    elements.dataModalTitle.innerHTML = `${icons[source] || '📊'} ${source.charAt(0).toUpperCase() + source.slice(1)} Data`;
+    elements.dataS3Key.textContent = result.s3_key || '--';
+    elements.dataLastModified.textContent = result.last_modified ? new Date(result.last_modified).toLocaleString() : '--';
+
+    // Render data based on source type
+    elements.dataViewer.innerHTML = renderDataVisualization(source, result.data);
+    elements.dataModal.classList.add('active');
+}
+
+function hideDataModal() {
+    elements.dataModal.classList.remove('active');
+}
+
+function renderDataVisualization(source, data) {
+    switch (source) {
+        case 'market':
+            return renderMarketData(data);
+        case 'planetary':
+            return renderPlanetaryData(data);
+        case 'geomagnetic':
+            return renderGeomagneticData(data);
+        default:
+            return renderGenericData(data);
+    }
+}
+
+function renderMarketData(data) {
+    if (!data || !Array.isArray(data)) {
+        return '<p style="color: var(--color-text-muted);">No market data available</p>';
+    }
+
+    return `
+        <div class="stats-summary">
+            <div class="stat-item">
+                <div class="stat-value">${data.length}</div>
+                <div class="stat-label">Records</div>
+            </div>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Open</th>
+                    <th>High</th>
+                    <th>Low</th>
+                    <th>Close</th>
+                    <th>Volume</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${data.slice(0, 50).map(row => `
+                    <tr>
+                        <td>${row.Date || row.date || '--'}</td>
+                        <td>$${Number(row.Open || row.open || 0).toFixed(2)}</td>
+                        <td>$${Number(row.High || row.high || 0).toFixed(2)}</td>
+                        <td>$${Number(row.Low || row.low || 0).toFixed(2)}</td>
+                        <td><strong>$${Number(row.Close || row.close || 0).toFixed(2)}</strong></td>
+                        <td>${Number(row.Volume || row.volume || 0).toLocaleString()}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function renderPlanetaryData(data) {
+    // NASA JPL Horizons returns ephemeris data in a specific format
+    if (!data) {
+        return '<p style="color: var(--color-text-muted);">No planetary data available</p>';
+    }
+
+    // Extract key info from Horizons response
+    const result = data.result || '';
+    const targetBody = result.match(/Target body name: ([^\n]+)/)?.[1] || 'Unknown';
+    const centerBody = result.match(/Center body name: ([^\n]+)/)?.[1] || 'Unknown';
+
+    return `
+        <div class="data-cards-grid">
+            <div class="data-card">
+                <div class="data-card-title">🎯 Target Body</div>
+                <div class="data-card-subtitle">${targetBody}</div>
+            </div>
+            <div class="data-card">
+                <div class="data-card-title">🌐 Reference</div>
+                <div class="data-card-subtitle">${centerBody}</div>
+            </div>
+            <div class="data-card">
+                <div class="data-card-title">📡 API Version</div>
+                <div class="data-card-subtitle">${data.signature?.version || 'v1.0'}</div>
+            </div>
+            <div class="data-card">
+                <div class="data-card-title">📅 Source</div>
+                <div class="data-card-subtitle">${data.signature?.source || 'NASA JPL Horizons'}</div>
+            </div>
+        </div>
+        <div style="margin-top: var(--spacing-xl);">
+            <h4 style="margin-bottom: var(--spacing-md); color: var(--color-text-secondary);">Ephemeris Data Preview</h4>
+            <pre style="background: var(--color-bg-secondary); padding: var(--spacing-lg); border-radius: var(--radius-md); overflow-x: auto; font-size: var(--font-size-xs); max-height: 300px; overflow-y: auto;"><code>${escapeHtml(result.substring(0, 3000))}</code></pre>
+        </div>
+    `;
+}
+
+function renderGeomagneticData(data) {
+    if (!data || !Array.isArray(data)) {
+        return '<p style="color: var(--color-text-muted);">No geomagnetic data available</p>';
+    }
+
+    const latestItems = data.slice(0, 20);
+
+    return `
+        <div class="stats-summary">
+            <div class="stat-item">
+                <div class="stat-value">${data.length}</div>
+                <div class="stat-label">Records</div>
+            </div>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    ${Object.keys(latestItems[0] || {}).slice(0, 6).map(key => `<th>${key}</th>`).join('')}
+                </tr>
+            </thead>
+            <tbody>
+                ${latestItems.map(row => `
+                    <tr>
+                        ${Object.values(row).slice(0, 6).map(val => `<td>${val}</td>`).join('')}
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function renderGenericData(data) {
+    if (!data) {
+        return '<p style="color: var(--color-text-muted);">No data available</p>';
+    }
+
+    const jsonStr = JSON.stringify(data, null, 2);
+    return `
+        <pre style="background: var(--color-bg-secondary); padding: var(--spacing-lg); border-radius: var(--radius-md); overflow-x: auto; font-size: var(--font-size-sm); max-height: 500px; overflow-y: auto;"><code>${escapeHtml(jsonStr.substring(0, 10000))}</code></pre>
+    `;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 
 // ============================================================================
 // Initialization

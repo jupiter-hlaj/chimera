@@ -1,16 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chimera Dashboard</title>
     <meta name="description" content="Chimera Data Ingestion Monitoring Dashboard">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
 </head>
+
 <body>
     <div class="app">
         <!-- Header -->
@@ -101,6 +104,30 @@
         </div>
     </div>
 
+    <!-- Data Viewer Modal -->
+    <div class="modal" id="data-modal">
+        <div class="modal-content data-modal-content">
+            <div class="data-modal-header">
+                <h3 id="data-modal-title">Data Viewer</h3>
+                <button class="btn-close" id="close-data-modal">×</button>
+            </div>
+            <div class="data-modal-meta">
+                <span class="data-meta-item">
+                    <span class="data-meta-label">S3 Key:</span>
+                    <span class="data-meta-value" id="data-s3-key">--</span>
+                </span>
+                <span class="data-meta-item">
+                    <span class="data-meta-label">Last Modified:</span>
+                    <span class="data-meta-value" id="data-last-modified">--</span>
+                </span>
+            </div>
+            <div class="data-viewer" id="data-viewer">
+                <pre><code id="data-content">Loading...</code></pre>
+            </div>
+        </div>
+    </div>
+
     <script src="js/app.js"></script>
 </body>
+
 </html>
