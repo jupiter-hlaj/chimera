@@ -7,8 +7,8 @@
 // Configuration
 // ============================================================================
 const CONFIG = {
-    // API URL - will be populated from CloudFormation outputs
-    apiUrl: localStorage.getItem('chimera_api_url') || '',
+    // API URL - hardcoded for dev environment
+    apiUrl: localStorage.getItem('chimera_api_url') || 'https://cflufzjv1a.execute-api.us-east-1.amazonaws.com/dev',
     refreshInterval: 30000, // 30 seconds
     maxActivityItems: 50
 };
