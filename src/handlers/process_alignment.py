@@ -118,7 +118,7 @@ def load_data_frame(source_type: str, s3_key: str) -> pd.DataFrame:
             
         # Standardize Timestamp Column
         # List of potential timestamp column names
-        ts_cols = ['Date', 'date', 'timestamp', 'Time', 'time', 'datetime']
+        ts_cols = ['Date', 'date', 'timestamp', 'Time', 'time', 'datetime', 'time_tag']
         ts_col = next((c for c in ts_cols if c in df.columns), None)
         
         if ts_col:
