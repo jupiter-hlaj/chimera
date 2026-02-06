@@ -440,21 +440,132 @@ async function fetchCorrelationStatus() {
 }
 
 function renderCorrelations(correlations) {
-    elements.correlationList.innerHTML = correlations.map(c => `
-        <div class="correlation-item">
-            <div class="correlation-pair">
-                <span class="market-factor">${c.market_factor.replace('market_', '')}</span>
-                <span class="correlation-arrow">↔</span>
-                <span class="env-factor">${c.environmental_factor.replace(/_/g, ' ')}</span>
+    elements.correlationList.innerHTML = correlations.map(c => {
+        const insight = generateInsight(c);
+        const strength = getStrengthLabel(c.correlation);
+        const direction = c.correlation > 0 ? 'positive' : 'negative';
+        const barWidth = Math.abs(c.correlation) * 100;
+        const directionArrow = c.correlation > 0 ? '↗' : '↘';
+
+        return `
+            <div class="correlation-card">
+                <div class="correlation-header">
+                    <span class="strength-badge ${strength.class}">${strength.label}</span>
+                    ${c.lag_hours > 0 ? `<span class="predictive-badge">🔮 Predictive</span>` : ''}
+                    <span class="direction-indicator ${direction}">${directionArrow}</span>
+                </div>
+                
+                <div class="correlation-visual">
+                    <div class="strength-bar-container">
+                        <div class="strength-bar ${direction}" style="width: ${barWidth}%"></div>
+                    </div>
+                    <span class="strength-percent ${direction}">${(c.correlation * 100).toFixed(0)}%</span>
+                </div>
+                
+                <div class="correlation-insight">
+                    <p class="insight-main">${insight.headline}</p>
+                    <p class="insight-detail">${insight.explanation}</p>
+                </div>
+                
+                <div class="correlation-footer">
+                    <span class="correlation-stat">
+                        <span class="stat-label">Sample Size</span>
+                        <span class="stat-value">${c.sample_size} hrs</span>
+                    </span>
+                    ${c.lag_hours > 0 ? `
+                    <span class="correlation-stat">
+                        <span class="stat-label">Lead Time</span>
+                        <span class="stat-value highlight">${c.lag_hours}h ahead</span>
+                    </span>
+                    ` : `
+                    <span class="correlation-stat">
+                        <span class="stat-label">Timing</span>
+                        <span class="stat-value">Real-time</span>
+                    </span>
+                    `}
+                </div>
             </div>
-            <div class="correlation-stats">
-                <span class="correlation-value ${c.correlation > 0 ? 'positive' : 'negative'}">
-                    r = ${c.correlation.toFixed(3)}
-                </span>
-                <span class="correlation-lag">${c.lag_hours > 0 ? `+${c.lag_hours}h lag` : 'instant'}</span>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
+}
+
+function getStrengthLabel(r) {
+    const abs = Math.abs(r);
+    if (abs >= 0.7) return { label: 'Very Strong', class: 'very-strong' };
+    if (abs >= 0.5) return { label: 'Strong', class: 'strong' };
+    if (abs >= 0.4) return { label: 'Moderate', class: 'moderate' };
+    return { label: 'Weak', class: 'weak' };
+}
+
+function generateInsight(c) {
+    const market = formatMarketFactor(c.market_factor);
+    const env = formatEnvFactor(c.environmental_factor);
+    const direction = c.correlation > 0;
+    const lag = c.lag_hours;
+
+    // Generate headline
+    let headline = '';
+    let explanation = '';
+
+    if (lag > 0) {
+        // Predictive correlation
+        headline = direction
+            ? `When ${env.name} increases, ${market.name} tends to rise ${lag}h later`
+            : `When ${env.name} increases, ${market.name} tends to fall ${lag}h later`;
+        explanation = `${env.description} appears to ${direction ? 'positively' : 'negatively'} predict ${market.description} with a ${lag}-hour lead time. This could be useful for forecasting.`;
+    } else {
+        // Instant correlation
+        headline = direction
+            ? `${market.name} and ${env.name} move together`
+            : `${market.name} and ${env.name} move in opposite directions`;
+        explanation = `When ${env.description} changes, ${market.description} shows a ${direction ? 'similar' : 'contrary'} movement at the same time.`;
+    }
+
+    return { headline, explanation };
+}
+
+function formatMarketFactor(factor) {
+    const map = {
+        'market_vix_open': { name: 'VIX (Volatility)', description: 'market fear/volatility' },
+        'market_vix_high': { name: 'VIX High', description: 'peak volatility' },
+        'market_vix_low': { name: 'VIX Low', description: 'minimum volatility' },
+        'market_vix_close': { name: 'VIX Close', description: 'closing volatility' },
+        'market_spy_close': { name: 'S&P 500', description: 'the stock market (S&P 500)' },
+        'market_spy_volume': { name: 'SPY Volume', description: 'trading volume' },
+        'market_qqq_close': { name: 'Nasdaq (QQQ)', description: 'tech stocks' },
+        'market_gld_close': { name: 'Gold', description: 'gold prices' },
+        'market_tlt_close': { name: 'Bonds (TLT)', description: 'long-term bonds' }
+    };
+    return map[factor] || { name: factor.replace('market_', '').replace(/_/g, ' '), description: factor };
+}
+
+function formatEnvFactor(factor) {
+    const parts = factor.toLowerCase();
+
+    if (parts.includes('schumann')) {
+        if (parts.includes('amplitude')) return { name: "Schumann Resonance", description: "Earth's electromagnetic resonance amplitude" };
+        if (parts.includes('frequency')) return { name: "Schumann Frequency", description: "Earth's natural frequency" };
+        return { name: "Schumann Resonance", description: "Earth's electromagnetic field activity" };
+    }
+    if (parts.includes('planetary')) {
+        if (parts.includes('mars')) return { name: "Mars Position", description: "Mars angular position" };
+        if (parts.includes('venus')) return { name: "Venus Position", description: "Venus angular position" };
+        if (parts.includes('jupiter')) return { name: "Jupiter Position", description: "Jupiter angular position" };
+        if (parts.includes('moon')) return { name: "Lunar Phase", description: "Moon phase/position" };
+        if (parts.includes('sun')) return { name: "Solar Position", description: "Sun position" };
+        return { name: "Planetary Factor", description: "planetary position data" };
+    }
+    if (parts.includes('kp') || parts.includes('geomagnetic')) {
+        return { name: "Geomagnetic Activity", description: "Earth's geomagnetic field disturbance (Kp index)" };
+    }
+    if (parts.includes('solar') || parts.includes('flux')) {
+        return { name: "Solar Activity", description: "solar radio flux/sunspot activity" };
+    }
+    if (parts.includes('gcp')) {
+        return { name: "Global Consciousness", description: "GCP random number generator coherence" };
+    }
+
+    return { name: factor.replace(/_/g, ' '), description: factor };
 }
 
 async function triggerAnalysis() {
