@@ -42,7 +42,13 @@ const elements = {
     dataLastModified: document.getElementById('data-last-modified'),
     dataContent: document.getElementById('data-content'),
     dataViewer: document.getElementById('data-viewer'),
-    closeDataModal: document.getElementById('close-data-modal')
+    closeDataModal: document.getElementById('close-data-modal'),
+    // Alignment
+    triggerAlignmentBtn: document.getElementById('trigger-alignment-btn'),
+    alignmentCard: document.getElementById('alignment-card'),
+    alignmentFile: document.getElementById('alignment-file'),
+    alignmentTime: document.getElementById('alignment-time'),
+    alignmentSize: document.getElementById('alignment-size')
 };
 
 // ============================================================================
@@ -341,6 +347,56 @@ function renderActivityLog() {
 // ============================================================================
 // Configuration Modal
 // ============================================================================
+async function fetchAlignmentStatus() {
+    try {
+        const data = await fetchAPI('/processed');
+
+        elements.alignmentFile.textContent = data.latest_file.replace('master_aligned_', '');
+        elements.alignmentTime.textContent = formatDate(data.last_modified);
+        elements.alignmentSize.textContent = `${Math.round(data.size / 1024)} KB`;
+        elements.alignmentCard.classList.remove('active'); // Stop pulsing if it was pulsing
+
+    } catch (error) {
+        if (error.message.includes('404')) {
+            elements.alignmentFile.textContent = 'No aligned data found';
+            elements.alignmentTime.textContent = '--';
+            elements.alignmentSize.textContent = '--';
+        } else {
+            console.warn('Alignment status check failed:', error);
+            elements.alignmentFile.textContent = 'Check failed';
+        }
+    }
+}
+
+async function triggerAlignment() {
+    try {
+        elements.triggerAlignmentBtn.disabled = true;
+        elements.alignmentCard.classList.add('active'); // Pulse effect
+        elements.alignmentFile.textContent = 'Processing...';
+
+        const response = await fetch(`${CONFIG.apiUrl}/process`, { method: 'POST' });
+        if (!response.ok) throw new Error('Failed to trigger');
+
+        const result = await response.json();
+
+        logActivity(`Alignment job started: ${result.function}`);
+
+        // Poll for updates a few times
+        setTimeout(fetchAlignmentStatus, 2000);
+        setTimeout(fetchAlignmentStatus, 5000);
+        setTimeout(fetchAlignmentStatus, 10000);
+
+    } catch (error) {
+        logActivity('Failed to trigger alignment');
+        console.error(error);
+        elements.alignmentCard.classList.remove('active');
+    } finally {
+        setTimeout(() => {
+            elements.triggerAlignmentBtn.disabled = false;
+        }, 1000);
+    }
+}
+
 function showConfigModal() {
     elements.apiInput.value = CONFIG.apiUrl;
     elements.configModal.classList.add('active');
@@ -381,7 +437,7 @@ async function refreshAll() {
     }
 
     try {
-        await Promise.all([fetchHealth(), fetchStatus()]);
+        await Promise.all([fetchHealth(), fetchStatus(), fetchAlignmentStatus()]);
     } catch (error) {
         console.error('Refresh failed:', error);
     }
@@ -422,6 +478,10 @@ elements.closeDataModal?.addEventListener('click', hideDataModal);
 elements.dataModal?.addEventListener('click', (e) => {
     if (e.target === elements.dataModal) hideDataModal();
 });
+
+if (elements.triggerAlignmentBtn) {
+    elements.triggerAlignmentBtn.addEventListener('click', triggerAlignment);
+}
 
 // ============================================================================
 // Data Modal Functions

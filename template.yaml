@@ -261,6 +261,18 @@ Resources:
             RestApiId: !Ref ChimeraApi
             Path: /processed
             Method: GET
+        TriggerCorrelation:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ChimeraApi
+            Path: /analyze
+            Method: POST
+        GetCorrelations:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ChimeraApi
+            Path: /correlations
+            Method: GET
 
   # Dashboard static website bucket
   DashboardBucket:
@@ -310,6 +322,23 @@ Resources:
           RAW_BUCKET: !Ref ChimeraRawBucket
           PROCESSED_BUCKET: !Ref ChimeraProcessedBucket
           METADATA_TABLE: !Ref ChimeraIngestionMetadata
+          LOG_LEVEL: INFO
+
+  ChimeraCorrelationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub chimera-correlation-${Environment}
+      Description: Analyzes correlations between market and environmental factors
+      CodeUri: src/handlers/
+      Handler: analyze_correlations.lambda_handler
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref ChimeraProcessedBucket
+        - S3WritePolicy:
+            BucketName: !Ref ChimeraProcessedBucket
+      Environment:
+        Variables:
+          PROCESSED_BUCKET: !Ref ChimeraProcessedBucket
           LOG_LEVEL: INFO
 
 # ============================================================================

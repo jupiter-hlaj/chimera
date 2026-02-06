@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import boto3
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Key, Attr
 
 # Configure logging
 logger = logging.getLogger()
@@ -88,7 +88,7 @@ def get_source_status(source_prefix: str) -> dict:
     
     # Scan for records that begin with this source prefix
     result = table.scan(
-        FilterExpression=Key('source_id').begins_with(f"{source_prefix}_")
+        FilterExpression=Attr('source_id').begins_with(f"{source_prefix}_")
     )
     
     items = result.get('Items', [])
@@ -187,7 +187,7 @@ def get_all_source_keys(source_prefix: str) -> list:
     
     # Scan for all records with this prefix
     result = table.scan(
-        FilterExpression=Key('source_id').begins_with(f"{source_prefix}_")
+        FilterExpression=Attr('source_id').begins_with(f"{source_prefix}_")
     )
     
     items = result.get('Items', [])
@@ -319,6 +319,51 @@ def handle_processed_status(event: dict) -> dict:
         return response(500, {'error': str(e)})
 
 
+def handle_analyze(event: dict) -> dict:
+    """Handle POST /analyze - trigger correlation analysis."""
+    logger.info("Handling /analyze request")
+    
+    env = os.environ.get('AWS_LAMBDA_FUNCTION_NAME', 'dev').split('-')[-1]
+    
+    try:
+        funcs = lambda_client.list_functions(MaxItems=100)
+        target_func = next((f['FunctionName'] for f in funcs['Functions'] 
+                            if 'ChimeraCorrelationFunction' in f['FunctionName'] and env in f['FunctionName']), None)
+        
+        if not target_func:
+            return response(500, {'error': f'Correlation function not found for env: {env}'})
+
+        result = lambda_client.invoke(
+            FunctionName=target_func,
+            InvocationType='Event',  # Async
+            Payload=json.dumps({})
+        )
+        
+        return response(202, {
+            'message': 'Correlation analysis triggered', 
+            'function': target_func
+        })
+    except Exception as e:
+        logger.error(f"Error executing correlation analysis: {e}")
+        return response(500, {'error': str(e)})
+
+
+def handle_correlations(event: dict) -> dict:
+    """Handle GET /correlations - return latest correlation results."""
+    PROCESSED_BUCKET = os.environ.get('PROCESSED_BUCKET', '')
+    if not PROCESSED_BUCKET:
+        return response(500, {'error': 'PROCESSED_BUCKET not defined'})
+        
+    try:
+        obj = s3_client.get_object(Bucket=PROCESSED_BUCKET, Key='latest_correlations.json')
+        data = json.loads(obj['Body'].read().decode('utf-8'))
+        return response(200, data)
+    except s3_client.exceptions.NoSuchKey:
+        return response(404, {'message': 'No correlations found. Run analysis first.'})
+    except Exception as e:
+        return response(500, {'error': str(e)})
+
+
 def handle_ingest(event: dict, source: str) -> dict:
     """Handle POST /ingest/{source} - trigger ingestion for a source."""
     logger.info(f"Handling /ingest/{source} request")
@@ -384,6 +429,12 @@ def lambda_handler(event: dict, context: Any) -> dict:
     elif path.startswith('/ingest/') and http_method == 'POST':
         source = path_params.get('source', path.split('/')[-1])
         return handle_ingest(event, source)
+    
+    elif path == '/analyze' and http_method == 'POST':
+        return handle_analyze(event)
+    
+    elif path == '/correlations':
+        return handle_correlations(event)
     
     else:
         return response(404, {'error': 'Not found', 'path': path})

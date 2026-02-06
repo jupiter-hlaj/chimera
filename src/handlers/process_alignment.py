@@ -55,7 +55,7 @@ def get_latest_s3_keys() -> Dict[str, List[Dict]]:
         # Scan for this source prefix
         # Note: In prod, query via GSI would be better, but Scan is fine for low volume
         response = table.scan(
-            FilterExpression=boto3.dynamodb.conditions.Key('source_id').begins_with(f"{source}_")
+            FilterExpression=boto3.dynamodb.conditions.Attr('source_id').begins_with(f"{source}_")
         )
         
         items = response.get('Items', [])
