@@ -261,36 +261,21 @@ def handle_process(event: dict) -> dict:
     logger.info("Handling /process request")
     
     env = os.environ.get('AWS_LAMBDA_FUNCTION_NAME', 'dev').split('-')[-1]
-    # Name must match template resource mapping logic (usually prefix-env)
-    # The function name in template is "ChimeraAlignmentFunction", so SAM names it "stackname-ChimeraAlignmentFunction-hash"
-    # But we can't guess the hash.
-    # However, we can look for it by tag or prefix like we do for health check?
-    # Or strict naming if configured. 
-    # For simplicity, let's search via boto3/list_functions or assume a predictable name if possible.
-    # Actually, SAM generated names are hard to predict inside Lambda.
-    # Better approach: Add ALIGNMENT_FUNCTION_NAME env var to Dashboard Function in template.yaml?
-    # No, that requires another template change.
-    # Let's search for it dynamically like handle_health does.
+    function_name = f"chimera-alignment-{env}"
     
     try:
-        funcs = lambda_client.list_functions(MaxItems=100)
-        # Look for the Alignment function
-        target_func = next((f['FunctionName'] for f in funcs['Functions'] 
-                            if 'ChimeraAlignmentFunction' in f['FunctionName'] and env in f['FunctionName']), None)
-        
-        if not target_func:
-            return response(500, {'error': f'Alignment function not found for env: {env}'})
-
         result = lambda_client.invoke(
-            FunctionName=target_func,
+            FunctionName=function_name,
             InvocationType='Event',  # Async
             Payload=json.dumps({})
         )
         
         return response(202, {
             'message': 'Alignment job triggered', 
-            'function': target_func
+            'function': function_name
         })
+    except lambda_client.exceptions.ResourceNotFoundException:
+        return response(404, {'error': f'Alignment function not found: {function_name}'})
     except Exception as e:
         logger.error(f"Error executing alignment: {e}")
         return response(500, {'error': str(e)})
@@ -324,25 +309,21 @@ def handle_analyze(event: dict) -> dict:
     logger.info("Handling /analyze request")
     
     env = os.environ.get('AWS_LAMBDA_FUNCTION_NAME', 'dev').split('-')[-1]
+    function_name = f"chimera-correlation-{env}"
     
     try:
-        funcs = lambda_client.list_functions(MaxItems=100)
-        target_func = next((f['FunctionName'] for f in funcs['Functions'] 
-                            if 'ChimeraCorrelationFunction' in f['FunctionName'] and env in f['FunctionName']), None)
-        
-        if not target_func:
-            return response(500, {'error': f'Correlation function not found for env: {env}'})
-
         result = lambda_client.invoke(
-            FunctionName=target_func,
+            FunctionName=function_name,
             InvocationType='Event',  # Async
             Payload=json.dumps({})
         )
         
         return response(202, {
             'message': 'Correlation analysis triggered', 
-            'function': target_func
+            'function': function_name
         })
+    except lambda_client.exceptions.ResourceNotFoundException:
+        return response(404, {'error': f'Correlation function not found: {function_name}'})
     except Exception as e:
         logger.error(f"Error executing correlation analysis: {e}")
         return response(500, {'error': str(e)})
