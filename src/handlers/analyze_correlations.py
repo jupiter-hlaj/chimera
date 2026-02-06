@@ -77,13 +77,13 @@ def compute_correlations(df: pd.DataFrame) -> List[Dict]:
                 
             try:
                 r = valid[market_col].corr(valid[other_col])
-                if abs(r) >= CORRELATION_THRESHOLD:
+                if pd.notna(r) and abs(r) >= CORRELATION_THRESHOLD:
                     correlations.append({
                         'market_factor': market_col,
                         'environmental_factor': other_col,
-                        'correlation': round(r, 4),
+                        'correlation': round(float(r), 4),
                         'lag_hours': 0,
-                        'sample_size': len(valid),
+                        'sample_size': int(len(valid)),
                         'type': 'instant'
                     })
             except Exception:
@@ -124,13 +124,13 @@ def compute_lag_correlations(df: pd.DataFrame, max_lag: int = 24) -> List[Dict]:
                     
                     r = valid.iloc[:, 0].corr(valid.iloc[:, 1])
                     
-                    if abs(r) >= CORRELATION_THRESHOLD:
+                    if pd.notna(r) and abs(r) >= CORRELATION_THRESHOLD:
                         correlations.append({
                             'market_factor': market_col,
                             'environmental_factor': other_col,
-                            'correlation': round(r, 4),
-                            'lag_hours': lag,
-                            'sample_size': len(valid),
+                            'correlation': round(float(r), 4),
+                            'lag_hours': int(lag),
+                            'sample_size': int(len(valid)),
                             'type': 'lagged'
                         })
                 except Exception:
@@ -151,6 +151,17 @@ def get_factor_base(name: str) -> str:
     # Remove common suffixes
     clean = name.replace('_open', '').replace('_close', '').replace('_high', '').replace('_low', '').replace('_volume', '')
     return clean
+
+def clean_float(obj):
+    """Recursively replace NaN/Inf with None (null) for JSON safety."""
+    if isinstance(obj, dict):
+        return {k: clean_float(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [clean_float(v) for v in obj]
+    elif isinstance(obj, float):
+        if np.isnan(obj) or np.isinf(obj):
+            return None
+    return obj
 
 def analyze() -> Dict:
     """Main analysis logic."""
@@ -207,6 +218,9 @@ def analyze() -> Dict:
         'top_correlations': top_correlations, # Optimized diverse list
         'all_correlations': all_correlations  # Full raw list
     }
+    
+    # Final safety pass for JSON compliance (replaces NaN with null)
+    result = clean_float(result)
     
     # Save to S3
     output_key = f"correlations_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
