@@ -150,7 +150,7 @@ def process_alignment() -> Dict:
     end_date = datetime.utcnow().replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
     start_date = end_date - timedelta(days=30)
     
-    master_idx = pd.date_range(start=start_date, end=end_date, freq='1h', name='timestamp')
+    master_idx = pd.date_range(start=start_date, end=end_date, freq='1h', name='timestamp', tz='UTC')
     master_df = pd.DataFrame(index=master_idx)
     
     stats = {'sources': 0, 'columns': 0}
