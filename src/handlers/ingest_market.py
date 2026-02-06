@@ -35,12 +35,51 @@ RAW_BUCKET = os.environ.get('RAW_BUCKET', '')
 METADATA_TABLE = os.environ.get('METADATA_TABLE', '')
 
 # Target symbols for Chimera
+# Organized by category for correlation analysis with environmental/cosmic factors
 DEFAULT_SYMBOLS = [
+    # === Core Market Indices ===
     'SPY',   # S&P 500 ETF - Primary market benchmark
     'QQQ',   # Nasdaq 100 ETF - Tech sector proxy
     '^VIX',  # Volatility Index - Fear/sentiment indicator
+    'DIA',   # Dow Jones Industrial Average ETF
+    'IWM',   # Russell 2000 ETF - Small caps
+    
+    # === Safe Haven Assets ===
     'GLD',   # Gold ETF - Safe-haven asset
+    'SLV',   # Silver ETF - Precious metals
     'TLT',   # 20+ Year Treasury ETF - Bond market proxy
+    
+    # === Energy & Commodities ===
+    'USO',   # Oil ETF - Energy prices
+    'UNG',   # Natural Gas ETF - Energy volatility
+    'XLE',   # Energy Sector ETF
+    
+    # === Crypto Proxy (Sentiment) ===
+    'BITO',  # Bitcoin ETF - Crypto sentiment proxy
+    
+    # === Sector ETFs (Sensitive to different factors) ===
+    'XLF',   # Financials - Rate/economic sensitive
+    'XLK',   # Technology - Growth/sentiment sensitive
+    'XLU',   # Utilities - Defensive/rate sensitive
+    'XLP',   # Consumer Staples - Defensive
+    
+    # === Individual Companies (Potentially cosmic-sensitive) ===
+    # Tech Giants (high retail sentiment, behavioral patterns)
+    'AAPL',  # Apple - Consumer tech bellwether
+    'TSLA',  # Tesla - High volatility, sentiment-driven
+    'NVDA',  # Nvidia - AI/tech momentum
+    
+    # Aerospace (space/cosmic exposure)
+    'LMT',   # Lockheed Martin - Defense/space
+    'BA',    # Boeing - Aerospace
+    
+    # Healthcare (biological sensitivity research)
+    'JNJ',   # Johnson & Johnson - Healthcare stability
+    'PFE',   # Pfizer - Pharma
+    
+    # Financial (economic cycle sensitive)
+    'JPM',   # JPMorgan - Financial bellwether
+    'GS',    # Goldman Sachs - Risk appetite proxy
 ]
 
 

@@ -526,15 +526,46 @@ function generateInsight(c) {
 
 function formatMarketFactor(factor) {
     const map = {
+        // Core Indices
         'market_vix_open': { name: 'VIX (Volatility)', description: 'market fear/volatility' },
         'market_vix_high': { name: 'VIX High', description: 'peak volatility' },
         'market_vix_low': { name: 'VIX Low', description: 'minimum volatility' },
         'market_vix_close': { name: 'VIX Close', description: 'closing volatility' },
         'market_spy_close': { name: 'S&P 500', description: 'the stock market (S&P 500)' },
-        'market_spy_volume': { name: 'SPY Volume', description: 'trading volume' },
-        'market_qqq_close': { name: 'Nasdaq (QQQ)', description: 'tech stocks' },
+        'market_spy_volume': { name: 'SPY Volume', description: 'S&P 500 trading volume' },
+        'market_qqq_close': { name: 'Nasdaq', description: 'tech stocks (QQQ)' },
+        'market_dia_close': { name: 'Dow Jones', description: 'the Dow Jones Industrial Average' },
+        'market_iwm_close': { name: 'Russell 2000', description: 'small-cap stocks' },
+
+        // Safe Havens
         'market_gld_close': { name: 'Gold', description: 'gold prices' },
-        'market_tlt_close': { name: 'Bonds (TLT)', description: 'long-term bonds' }
+        'market_slv_close': { name: 'Silver', description: 'silver prices' },
+        'market_tlt_close': { name: 'Bonds', description: 'long-term Treasury bonds' },
+
+        // Energy
+        'market_uso_close': { name: 'Oil', description: 'crude oil prices' },
+        'market_ung_close': { name: 'Natural Gas', description: 'natural gas prices' },
+        'market_xle_close': { name: 'Energy Sector', description: 'energy stocks' },
+
+        // Crypto
+        'market_bito_close': { name: 'Bitcoin', description: 'Bitcoin/crypto sentiment' },
+
+        // Sectors
+        'market_xlf_close': { name: 'Financials', description: 'financial stocks' },
+        'market_xlk_close': { name: 'Tech Sector', description: 'technology stocks' },
+        'market_xlu_close': { name: 'Utilities', description: 'utility stocks' },
+        'market_xlp_close': { name: 'Consumer Staples', description: 'consumer staple stocks' },
+
+        // Individual Companies
+        'market_aapl_close': { name: 'Apple', description: 'Apple stock price' },
+        'market_tsla_close': { name: 'Tesla', description: 'Tesla stock price' },
+        'market_nvda_close': { name: 'Nvidia', description: 'Nvidia stock price' },
+        'market_lmt_close': { name: 'Lockheed Martin', description: 'aerospace/defense stock' },
+        'market_ba_close': { name: 'Boeing', description: 'aerospace stock' },
+        'market_jnj_close': { name: 'Johnson & Johnson', description: 'healthcare stock' },
+        'market_pfe_close': { name: 'Pfizer', description: 'pharma stock' },
+        'market_jpm_close': { name: 'JPMorgan', description: 'banking stock' },
+        'market_gs_close': { name: 'Goldman Sachs', description: 'investment banking stock' },
     };
     return map[factor] || { name: factor.replace('market_', '').replace(/_/g, ' '), description: factor };
 }
