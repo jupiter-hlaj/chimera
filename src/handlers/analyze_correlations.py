@@ -162,7 +162,7 @@ def analyze() -> Dict:
     # Sort by absolute correlation (strongest first)
     all_correlations.sort(key=lambda x: abs(x['correlation']), reverse=True)
     
-    # Limit to top 50
+    # Limit to top 50 for quick display, but keep all for report
     top_correlations = all_correlations[:50]
     
     # Build result
@@ -172,7 +172,8 @@ def analyze() -> Dict:
         'columns_analyzed': df.columns.tolist(),
         'total_correlations_found': len(all_correlations),
         'threshold': CORRELATION_THRESHOLD,
-        'top_correlations': top_correlations
+        'top_correlations': top_correlations,
+        'all_correlations': all_correlations  # Full list for comprehensive report
     }
     
     # Save to S3

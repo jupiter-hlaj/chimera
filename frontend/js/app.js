@@ -18,6 +18,8 @@ const CONFIG = {
 // ============================================================================
 let refreshTimer = null;
 const activityLog = [];
+let allCorrelations = [];
+let displayedCorrelationLimit = 50;
 
 // ============================================================================
 // DOM Elements
@@ -56,7 +58,10 @@ const elements = {
     analysisCount: document.getElementById('analysis-count'),
     analysisTime: document.getElementById('analysis-time'),
     correlationsPreview: document.getElementById('correlations-preview'),
-    correlationList: document.getElementById('correlation-list')
+    correlationList: document.getElementById('correlation-list'),
+    correlationControls: document.getElementById('correlation-controls'),
+    loadMoreBtn: document.getElementById('load-more-btn'),
+    downloadCsvBtn: document.getElementById('download-csv-btn')
 };
 
 // ============================================================================
@@ -417,13 +422,17 @@ async function fetchCorrelationStatus() {
             return;
         }
 
+        // Store full list
+        allCorrelations = data.all_correlations || data.top_correlations || [];
+        displayedCorrelationLimit = 50; // Reset limit
+
         elements.analysisStatus.textContent = `${data.total_correlations_found} correlations found`;
         elements.analysisCount.textContent = `Shape: ${data.data_shape?.[0]}×${data.data_shape?.[1]}`;
         elements.analysisTime.textContent = formatDate(data.generated_at);
 
-        // Show top correlations
-        if (data.top_correlations && data.top_correlations.length > 0) {
-            renderCorrelations(data.top_correlations.slice(0, 5));
+        // Render (pagination handled inside)
+        if (allCorrelations.length > 0) {
+            renderCorrelations(allCorrelations);
             elements.correlationsPreview.style.display = 'block';
         }
 
@@ -440,7 +449,16 @@ async function fetchCorrelationStatus() {
 }
 
 function renderCorrelations(correlations) {
-    elements.correlationList.innerHTML = correlations.map(c => {
+    if (!correlations || correlations.length === 0) {
+        elements.correlationList.innerHTML = '<div class="empty-state">No significant correlations found above threshold.</div>';
+        if (elements.correlationControls) elements.correlationControls.style.display = 'none';
+        return;
+    }
+
+    // Slice for display
+    const displayItems = correlations.slice(0, displayedCorrelationLimit);
+
+    elements.correlationList.innerHTML = displayItems.map(c => {
         const insight = generateInsight(c);
         const strength = getStrengthLabel(c.correlation);
         const direction = c.correlation > 0 ? 'positive' : 'negative';
@@ -487,6 +505,19 @@ function renderCorrelations(correlations) {
             </div>
         `;
     }).join('');
+
+    // Show/Hide Controls
+    if (elements.correlationControls) {
+        elements.correlationControls.style.display = 'flex';
+
+        // Hide "Load More" if showing all
+        if (displayedCorrelationLimit >= correlations.length) {
+            elements.loadMoreBtn.style.display = 'none';
+        } else {
+            elements.loadMoreBtn.style.display = 'block';
+            elements.loadMoreBtn.textContent = `Load More (${correlations.length - displayedCorrelationLimit} remaining)`;
+        }
+    }
 }
 
 function getStrengthLabel(r) {
@@ -938,6 +969,44 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+function showMoreCorrelations() {
+    displayedCorrelationLimit += 50;
+    renderCorrelations(allCorrelations);
+}
+
+function downloadCorrelationsCSV() {
+    if (!allCorrelations || allCorrelations.length === 0) return;
+
+    // Headers
+    const headers = ['Market Factor', 'Environmental Factor', 'Correlation (r)', 'Lag (hours)', 'Sample Size', 'Type', 'Description'];
+
+    // Rows
+    const rows = allCorrelations.map(c => {
+        const insight = generateInsight(c);
+        return [
+            c.market_factor,
+            c.environmental_factor,
+            c.correlation,
+            c.lag_hours,
+            c.sample_size,
+            c.type,
+            `"${insight.headline.replace(/"/g, '""')}"` // csv escape
+        ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `chimera_correlations_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
 // ============================================================================
 // Initialization
 // ============================================================================
@@ -945,6 +1014,55 @@ function init() {
     // Update API display
     if (CONFIG.apiUrl) {
         elements.apiUrl.textContent = `API: ${CONFIG.apiUrl}`;
+    }
+
+    // Event Listeners
+    if (elements.refreshBtn) elements.refreshBtn.addEventListener('click', () => {
+        logActivity('Manual refresh triggered');
+        refreshAll();
+    });
+
+    if (elements.apiInput) elements.apiInput.value = CONFIG.apiUrl;
+
+    if (elements.triggerAlignmentBtn) {
+        elements.triggerAlignmentBtn.addEventListener('click', triggerAlignment);
+    }
+
+    if (elements.triggerAnalysisBtn) {
+        elements.triggerAnalysisBtn.addEventListener('click', triggerAnalysis);
+    }
+
+    // Config Modal
+    const configBtn = document.querySelector('.config-btn');
+    if (configBtn) configBtn.addEventListener('click', () => elements.configModal.style.display = 'flex');
+    if (elements.cancelConfig) elements.cancelConfig.addEventListener('click', () => elements.configModal.style.display = 'none');
+
+    if (elements.saveConfig) elements.saveConfig.addEventListener('click', () => {
+        const newUrl = elements.apiInput.value.trim();
+        if (newUrl) {
+            CONFIG.apiUrl = newUrl;
+            localStorage.setItem('chimera_api_url', newUrl);
+            elements.apiUrl.textContent = `API: ${CONFIG.apiUrl}`;
+            elements.configModal.style.display = 'none';
+            logActivity('API URL updated');
+            refreshAll();
+        }
+    });
+
+    // Close data modal
+    if (elements.closeDataModal) {
+        elements.closeDataModal.addEventListener('click', () => {
+            elements.dataModal.style.display = 'none';
+        });
+    }
+
+    // Correlation Actions
+    if (elements.loadMoreBtn) {
+        elements.loadMoreBtn.addEventListener('click', showMoreCorrelations);
+    }
+
+    if (elements.downloadCsvBtn) {
+        elements.downloadCsvBtn.addEventListener('click', downloadCorrelationsCSV);
     }
 
     logActivity('Dashboard initialized');
