@@ -314,12 +314,20 @@ Outputs:
 
   IngestGCPFunctionArn:
     Description: ARN of the GCP data ingestion function
-  ChimeraApi:
-    Description: "API Gateway endpoint URL for Prod stage for Chimera function"
-    Value: !Sub "https://${ChimeraApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
-  ChimeraFunction:
-    Description: "Chimera Lambda Function ARN"
-    Value: !GetAtt ChimeraIngestionFunction.Arn
-  ChimeraIngestionRole:
-    Description: "Implicit IAM Role created for Chimera function"
-    Value: !GetAtt ChimeraIngestionFunctionRole.ArndBucket
+    Value: !GetAtt IngestGCPFunction.Arn
+
+  ChimeraAlignmentFunctionArn:
+    Description: "Chimera Alignment Lambda Function ARN"
+    Value: !GetAtt ChimeraAlignmentFunction.Arn
+
+  ChimeraAlignmentFunctionRole:
+    Description: "Implicit IAM Role created for Chimera Alignment function"
+    Value: !GetAtt ChimeraAlignmentFunctionRole.Arn
+
+  DashboardApiUrl:
+    Description: Dashboard API URL
+    Value: !Sub https://${ChimeraApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
+
+  DashboardWebsiteUrl:
+    Description: Dashboard website URL
+    Value: !GetAtt DashboardBucket.WebsiteURL
