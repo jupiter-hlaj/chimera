@@ -213,6 +213,8 @@ Resources:
       Policies:
         - S3ReadPolicy:
             BucketName: !Ref ChimeraRawBucket
+        - S3ReadPolicy:
+            BucketName: !Ref ChimeraProcessedBucket
         - DynamoDBReadPolicy:
             TableName: !Ref ChimeraIngestionMetadata
         - Statement:
@@ -247,6 +249,18 @@ Resources:
             RestApiId: !Ref ChimeraApi
             Path: /ingest/{source}
             Method: POST
+        TriggerAlignment:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ChimeraApi
+            Path: /process
+            Method: POST
+        GetProcessedStatus:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ChimeraApi
+            Path: /processed
+            Method: GET
 
   # Dashboard static website bucket
   DashboardBucket:

@@ -318,6 +318,8 @@ def handle_processed_status(event: dict) -> dict:
     except Exception as e:
         return response(500, {'error': str(e)})
 
+
+def handle_ingest(event: dict, source: str) -> dict:
     """Handle POST /ingest/{source} - trigger ingestion for a source."""
     logger.info(f"Handling /ingest/{source} request")
     
@@ -368,6 +370,12 @@ def lambda_handler(event: dict, context: Any) -> dict:
     
     elif path == '/health':
         return handle_health(event)
+
+    elif path == '/process' and http_method == 'POST':
+        return handle_process(event)
+    
+    elif path == '/processed':
+        return handle_processed_status(event)
     
     elif path.startswith('/data/'):
         source = path_params.get('source', path.split('/')[-1])
