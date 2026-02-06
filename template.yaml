@@ -296,11 +296,6 @@ Resources:
           PROCESSED_BUCKET: !Ref ChimeraProcessedBucket
           METADATA_TABLE: !Ref ChimeraIngestionMetadata
           LOG_LEVEL: INFO
-      Events:
-        ScheduledRule:
-          Type: Schedule
-          Properties:
-            Schedule: rate(1 day)
 
 # ============================================================================
 # OUTPUTS
