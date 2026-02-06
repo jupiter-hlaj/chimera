@@ -278,6 +278,30 @@ Resources:
             Action: s3:GetObject
             Resource: !Sub arn:aws:s3:::${DashboardBucket}/*
 
+  ChimeraAlignmentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/handlers/
+      Handler: process_alignment.lambda_handler
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref ChimeraRawBucket
+        - S3WritePolicy:
+            BucketName: !Ref ChimeraProcessedBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ChimeraIngestionMetadata
+      Environment:
+        Variables:
+          RAW_BUCKET: !Ref ChimeraRawBucket
+          PROCESSED_BUCKET: !Ref ChimeraProcessedBucket
+          METADATA_TABLE: !Ref ChimeraIngestionMetadata
+          LOG_LEVEL: INFO
+      Events:
+        ScheduledRule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 day)
+
 # ============================================================================
 # OUTPUTS
 # ============================================================================
