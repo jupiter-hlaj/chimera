@@ -139,6 +139,19 @@ def compute_lag_correlations(df: pd.DataFrame, max_lag: int = 24) -> List[Dict]:
     return correlations
 
 
+# Blacklist specific patterns (e.g., ID columns, spurious counters)
+BLACKLIST_PATTERNS = ['region', '_id', 'station', 'obsid', 'quality', 'report_status']
+
+def is_blacklisted(col_name: str) -> bool:
+    """Check if column name contains any blacklisted patterns."""
+    return any(p in col_name.lower() for p in BLACKLIST_PATTERNS)
+
+def get_factor_base(name: str) -> str:
+    """Extract base factor name (e.g., 'market_spy_close' -> 'market_spy')."""
+    # Remove common suffixes
+    clean = name.replace('_open', '').replace('_close', '').replace('_high', '').replace('_low', '').replace('_volume', '')
+    return clean
+
 def analyze() -> Dict:
     """Main analysis logic."""
     logger.info("Starting Correlation Analysis...")
@@ -151,6 +164,10 @@ def analyze() -> Dict:
             'message': 'No aligned data found. Run alignment first.'
         }
     
+    # Filter blacklisted columns
+    cols_to_keep = [c for c in df.columns if not is_blacklisted(c)]
+    df = df[cols_to_keep]
+    
     logger.info(f"Loaded data shape: {df.shape}")
     
     # Compute correlations
@@ -162,9 +179,24 @@ def analyze() -> Dict:
     # Sort by absolute correlation (strongest first)
     all_correlations.sort(key=lambda x: abs(x['correlation']), reverse=True)
     
-    # Limit to top 50 for quick display, but keep all for report
-    top_correlations = all_correlations[:50]
+    # Create diverse top list
+    seen_pairs = set()
+    top_correlations = []
     
+    for c in all_correlations:
+        # Create a unique key for the (Market, Env) pair
+        # e.g. "market_spy" + "schumann_amplitude"
+        market_base = get_factor_base(c['market_factor'])
+        env_base = get_factor_base(c['environmental_factor'])
+        pair_key = f"{market_base}::{env_base}"
+        
+        if pair_key not in seen_pairs:
+            top_correlations.append(c)
+            seen_pairs.add(pair_key)
+            
+        if len(top_correlations) >= 50:
+            break
+            
     # Build result
     result = {
         'generated_at': datetime.utcnow().isoformat() + 'Z',
@@ -172,8 +204,8 @@ def analyze() -> Dict:
         'columns_analyzed': df.columns.tolist(),
         'total_correlations_found': len(all_correlations),
         'threshold': CORRELATION_THRESHOLD,
-        'top_correlations': top_correlations,
-        'all_correlations': all_correlations  # Full list for comprehensive report
+        'top_correlations': top_correlations, # Optimized diverse list
+        'all_correlations': all_correlations  # Full raw list
     }
     
     # Save to S3
