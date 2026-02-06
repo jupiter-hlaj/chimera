@@ -48,7 +48,15 @@ const elements = {
     alignmentCard: document.getElementById('alignment-card'),
     alignmentFile: document.getElementById('alignment-file'),
     alignmentTime: document.getElementById('alignment-time'),
-    alignmentSize: document.getElementById('alignment-size')
+    alignmentSize: document.getElementById('alignment-size'),
+    // AI Analysis
+    triggerAnalysisBtn: document.getElementById('trigger-analysis-btn'),
+    analysisCard: document.getElementById('analysis-card'),
+    analysisStatus: document.getElementById('analysis-status'),
+    analysisCount: document.getElementById('analysis-count'),
+    analysisTime: document.getElementById('analysis-time'),
+    correlationsPreview: document.getElementById('correlations-preview'),
+    correlationList: document.getElementById('correlation-list')
 };
 
 // ============================================================================
@@ -397,6 +405,87 @@ async function triggerAlignment() {
     }
 }
 
+async function fetchCorrelationStatus() {
+    try {
+        const data = await fetchAPI('/correlations');
+
+        if (data.message && data.message.includes('No correlations')) {
+            elements.analysisStatus.textContent = 'No analysis yet';
+            elements.analysisCount.textContent = '--';
+            elements.analysisTime.textContent = '--';
+            elements.correlationsPreview.style.display = 'none';
+            return;
+        }
+
+        elements.analysisStatus.textContent = `${data.total_correlations_found} correlations found`;
+        elements.analysisCount.textContent = `Shape: ${data.data_shape?.[0]}×${data.data_shape?.[1]}`;
+        elements.analysisTime.textContent = formatDate(data.generated_at);
+
+        // Show top correlations
+        if (data.top_correlations && data.top_correlations.length > 0) {
+            renderCorrelations(data.top_correlations.slice(0, 5));
+            elements.correlationsPreview.style.display = 'block';
+        }
+
+    } catch (error) {
+        if (error.message.includes('404')) {
+            elements.analysisStatus.textContent = 'No analysis yet';
+            elements.analysisCount.textContent = '--';
+            elements.analysisTime.textContent = '--';
+        } else {
+            console.warn('Correlation status check failed:', error);
+            elements.analysisStatus.textContent = 'Check failed';
+        }
+    }
+}
+
+function renderCorrelations(correlations) {
+    elements.correlationList.innerHTML = correlations.map(c => `
+        <div class="correlation-item">
+            <div class="correlation-pair">
+                <span class="market-factor">${c.market_factor.replace('market_', '')}</span>
+                <span class="correlation-arrow">↔</span>
+                <span class="env-factor">${c.environmental_factor.replace(/_/g, ' ')}</span>
+            </div>
+            <div class="correlation-stats">
+                <span class="correlation-value ${c.correlation > 0 ? 'positive' : 'negative'}">
+                    r = ${c.correlation.toFixed(3)}
+                </span>
+                <span class="correlation-lag">${c.lag_hours > 0 ? `+${c.lag_hours}h lag` : 'instant'}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function triggerAnalysis() {
+    try {
+        elements.triggerAnalysisBtn.disabled = true;
+        elements.analysisCard.classList.add('active');
+        elements.analysisStatus.textContent = 'Processing...';
+
+        const response = await fetch(`${CONFIG.apiUrl}/analyze`, { method: 'POST' });
+        if (!response.ok) throw new Error('Failed to trigger');
+
+        const result = await response.json();
+
+        logActivity(`Correlation analysis started: ${result.function}`);
+
+        // Poll for updates
+        setTimeout(fetchCorrelationStatus, 3000);
+        setTimeout(fetchCorrelationStatus, 8000);
+        setTimeout(fetchCorrelationStatus, 15000);
+
+    } catch (error) {
+        logActivity('Failed to trigger analysis');
+        console.error(error);
+        elements.analysisCard.classList.remove('active');
+    } finally {
+        setTimeout(() => {
+            elements.triggerAnalysisBtn.disabled = false;
+        }, 1000);
+    }
+}
+
 function showConfigModal() {
     elements.apiInput.value = CONFIG.apiUrl;
     elements.configModal.classList.add('active');
@@ -437,7 +526,7 @@ async function refreshAll() {
     }
 
     try {
-        await Promise.all([fetchHealth(), fetchStatus(), fetchAlignmentStatus()]);
+        await Promise.all([fetchHealth(), fetchStatus(), fetchAlignmentStatus(), fetchCorrelationStatus()]);
     } catch (error) {
         console.error('Refresh failed:', error);
     }
@@ -481,6 +570,10 @@ elements.dataModal?.addEventListener('click', (e) => {
 
 if (elements.triggerAlignmentBtn) {
     elements.triggerAlignmentBtn.addEventListener('click', triggerAlignment);
+}
+
+if (elements.triggerAnalysisBtn) {
+    elements.triggerAnalysisBtn.addEventListener('click', triggerAnalysis);
 }
 
 // ============================================================================

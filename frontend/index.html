@@ -89,6 +89,33 @@
                 </div>
             </section>
 
+            <!-- AI Analysis Section (Phase 3) -->
+            <section class="analysis-section">
+                <div class="section-header">
+                    <h2>AI Pattern Discovery (Phase 3)</h2>
+                    <button class="btn btn-primary" id="trigger-analysis-btn">
+                        <span class="btn-icon">🔬</span>
+                        Analyze Correlations
+                    </button>
+                </div>
+                <div class="analysis-status-card" id="analysis-card">
+                    <div class="analysis-info">
+                        <strong>Correlation Results:</strong>
+                        <span id="analysis-status">Checking...</span>
+                    </div>
+                    <div class="analysis-meta">
+                        <span id="analysis-count">--</span>
+                        <span id="analysis-time">--</span>
+                    </div>
+                </div>
+                <div class="correlations-preview" id="correlations-preview" style="display: none;">
+                    <h4>Top Correlations</h4>
+                    <div class="correlation-list" id="correlation-list">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+            </section>
+
             <!-- Activity Log -->
             <section class="activity-section">
                 <div class="section-header">
