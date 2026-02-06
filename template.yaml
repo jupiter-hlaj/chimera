@@ -70,6 +70,12 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ["*"]
+            AllowedMethods: [GET]
+            AllowedOrigins: ["*"]
+            MaxAge: 3000
       Tags:
         - Key: Project
           Value: Chimera
@@ -394,3 +400,7 @@ Outputs:
   DashboardWebsiteUrl:
     Description: Dashboard website URL
     Value: !GetAtt DashboardBucket.WebsiteURL
+
+  DashboardBucketName:
+    Description: Dashboard S3 bucket name
+    Value: !Ref DashboardBucket

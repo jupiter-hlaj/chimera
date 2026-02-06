@@ -330,19 +330,30 @@ def handle_analyze(event: dict) -> dict:
 
 
 def handle_correlations(event: dict) -> dict:
-    """Handle GET /correlations - return latest correlation results."""
+    """Handle GET /correlations - return latest correlation results via presigned URL."""
     PROCESSED_BUCKET = os.environ.get('PROCESSED_BUCKET', '')
     if not PROCESSED_BUCKET:
         return response(500, {'error': 'PROCESSED_BUCKET not defined'})
         
     try:
-        obj = s3_client.get_object(Bucket=PROCESSED_BUCKET, Key='latest_correlations.json')
-        data = json.loads(obj['Body'].read().decode('utf-8'))
-        return response(200, data)
-    except s3_client.exceptions.NoSuchKey:
-        return response(404, {'message': 'No correlations found. Run analysis first.'})
+        # Generate presigned URL to bypass 6MB limit
+        url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': PROCESSED_BUCKET, 'Key': 'latest_correlations.json'},
+            ExpiresIn=3600
+        )
+        return response(200, {'url': url})
     except Exception as e:
-        return response(500, {'error': str(e)})
+        logger.error(f"Error generating presigned URL: {e}")
+        # Fallback to direct fetch if small (though usually it's large)
+        try:
+            obj = s3_client.get_object(Bucket=PROCESSED_BUCKET, Key='latest_correlations.json')
+            data = json.loads(obj['Body'].read().decode('utf-8'))
+            return response(200, data)
+        except s3_client.exceptions.NoSuchKey:
+            return response(404, {'message': 'No correlations found. Run analysis first.'})
+        except Exception as e2:
+            return response(500, {'error': str(e2)})
 
 
 def handle_ingest(event: dict, source: str) -> dict:

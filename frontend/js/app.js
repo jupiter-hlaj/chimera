@@ -422,13 +422,24 @@ async function fetchCorrelationStatus() {
             return;
         }
 
+        let correlationsData = data;
+        // Handle Presigned URL if provided
+        if (data.url) {
+            console.log('Fetching correlation data from presigned URL...');
+            const res = await fetch(data.url);
+            if (!res.ok) throw new Error(`S3 fetch failed: ${res.status}`);
+            correlationsData = await res.json();
+            logActivity('Fetched large correlation dataset via S3');
+        }
+
         // Store full list
-        allCorrelations = data.all_correlations || data.top_correlations || [];
+        allCorrelations = correlationsData.all_correlations || correlationsData.top_correlations || [];
         displayedCorrelationLimit = 50; // Reset limit
 
-        elements.analysisStatus.textContent = `${data.total_correlations_found} correlations found`;
-        elements.analysisCount.textContent = `Shape: ${data.data_shape?.[0]}×${data.data_shape?.[1]}`;
-        elements.analysisTime.textContent = formatDate(data.generated_at);
+        elements.analysisStatus.textContent = `${allCorrelations.length} correlations found`;
+        elements.analysisCount.textContent = correlationsData.data_shape ?
+            `Shape: ${correlationsData.data_shape[0]}×${correlationsData.data_shape[1]}` : '--';
+        elements.analysisTime.textContent = formatDate(correlationsData.generated_at || data.generated_at);
 
         // Render (pagination handled inside)
         if (allCorrelations.length > 0) {
