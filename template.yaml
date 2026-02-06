@@ -314,20 +314,12 @@ Outputs:
 
   IngestGCPFunctionArn:
     Description: ARN of the GCP data ingestion function
-    Value: !GetAtt IngestGCPFunction.Arn
-
-  IngestMarketFunctionArn:
-    Description: ARN of the market data ingestion function
-    Value: !GetAtt IngestMarketFunction.Arn
-
-  DashboardApiUrl:
-    Description: Dashboard API URL
-    Value: !Sub https://${ChimeraApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
-
-  DashboardWebsiteUrl:
-    Description: Dashboard website URL
-    Value: !GetAtt DashboardBucket.WebsiteURL
-
-  DashboardBucketName:
-    Description: Dashboard S3 bucket name
-    Value: !Ref DashboardBucket
+  ChimeraApi:
+    Description: "API Gateway endpoint URL for Prod stage for Chimera function"
+    Value: !Sub "https://${ChimeraApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
+  ChimeraFunction:
+    Description: "Chimera Lambda Function ARN"
+    Value: !GetAtt ChimeraIngestionFunction.Arn
+  ChimeraIngestionRole:
+    Description: "Implicit IAM Role created for Chimera function"
+    Value: !GetAtt ChimeraIngestionFunctionRole.ArndBucket
