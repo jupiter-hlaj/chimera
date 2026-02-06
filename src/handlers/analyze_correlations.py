@@ -30,7 +30,7 @@ s3_client = boto3.client('s3')
 
 # Configuration
 PROCESSED_BUCKET = os.environ.get('PROCESSED_BUCKET', '')
-CORRELATION_THRESHOLD = 0.3  # Only report correlations above this
+CORRELATION_THRESHOLD = 0.1  # Lowered threshold to see more potential connections
 
 
 def load_aligned_data() -> pd.DataFrame:
