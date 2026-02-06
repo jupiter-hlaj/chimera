@@ -8,6 +8,7 @@ The system is designed to be serverless, cost-effective, and fully automated usi
 
 - **Multi-Source Data Ingestion**: Collects data from 5 diverse sources including NASA JPL, NOAA, and Yahoo Finance
 - **Real-Time Dashboard**: Modern dark-themed monitoring UI with live status and one-click ingestion triggers
+- **Unified Data Alignment**: Phase 2 processing layer aligns all datasets to a 1-hour heartbeat
 - **Fully Serverless**: Event-driven architecture using AWS Lambda, DynamoDB, S3, and API Gateway
 - **GitOps CI/CD**: Automated deployments via GitHub Actions with OIDC authentication
 - **Cost Optimized**: Uses Provisioned DynamoDB and Lambda Free Tier for minimal cost
@@ -125,16 +126,19 @@ chimera/
 │       ├── ingest_schumann.py
 │       ├── ingest_gcp.py
 │       ├── ingest_market.py
+│       ├── process_alignment.py
 │       ├── dashboard_api.py
 │       └── requirements.txt
 ├── frontend/               # Dashboard web UI
 │   ├── index.html
 │   ├── css/styles.css
 │   └── js/app.js
-├── phase1-docs/            # Verbose documentation
+├── phase1-docs/            # Verbose documentation (Data Acquisition)
 │   ├── 01_api_research.md
 │   ├── 02_architecture_decisions.md
 │   └── 03_implementation_log.md
+├── phase2-docs/            # Verbose documentation (Temporal Alignment)
+│   └── 01_temporal_alignment.md
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml      # CI/CD pipeline
@@ -214,6 +218,10 @@ Detailed documentation is available in the `phase1-docs/` directory:
 - [`01_api_research.md`](phase1-docs/01_api_research.md) - API endpoint research and examples
 - [`02_architecture_decisions.md`](phase1-docs/02_architecture_decisions.md) - Design rationale and trade-offs
 - [`03_implementation_log.md`](phase1-docs/03_implementation_log.md) - Step-by-step implementation log
+
+**Phase 2: Temporal Alignment**
+- [`01_temporal_alignment.md`](phase2-docs/01_temporal_alignment.md) - Logic for aligning disparate datasets
+
 
 ## 📜 License
 
