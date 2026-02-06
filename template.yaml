@@ -295,6 +295,7 @@ Resources:
   ChimeraAlignmentFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub chimera-alignment-${Environment}
       CodeUri: src/handlers/
       Handler: process_alignment.lambda_handler
       Policies:
