@@ -107,8 +107,19 @@ graph TD
 | `/health` | GET | System health check |
 | `/data/{source}` | GET | Fetch latest data for a source |
 | `/ingest/{source}` | POST | Trigger ingestion for a source |
+| `/process` | POST | Trigger temporal alignment |
+| `/processed` | GET | Get alignment status |
+| `/analyze` | POST | Trigger correlation analysis |
+| `/correlations` | GET | Get correlation results |
 
-### 4. Frontend (`frontend/`)
+### 4. Processing Layer (`src/handlers/`)
+
+| Function | Purpose |
+|----------|---------|
+| `process_alignment` | Aligns all sources to 1-hour heartbeat (UTC) |
+| `analyze_correlations` | Computes Pearson + lag correlations |
+
+### 5. Frontend (`frontend/`)
 
 - Modern dark-themed dashboard with glassmorphism design
 - Real-time status monitoring with auto-refresh
@@ -127,18 +138,19 @@ chimera/
 │       ├── ingest_gcp.py
 │       ├── ingest_market.py
 │       ├── process_alignment.py
+│       ├── analyze_correlations.py
 │       ├── dashboard_api.py
 │       └── requirements.txt
 ├── frontend/               # Dashboard web UI
 │   ├── index.html
 │   ├── css/styles.css
 │   └── js/app.js
-├── phase1-docs/            # Verbose documentation (Data Acquisition)
-│   ├── 01_api_research.md
-│   ├── 02_architecture_decisions.md
-│   └── 03_implementation_log.md
-├── phase2-docs/            # Verbose documentation (Temporal Alignment)
+├── phase1-docs/            # Data Acquisition documentation
+│   └── ...
+├── phase2-docs/            # Temporal Alignment documentation
 │   └── 01_temporal_alignment.md
+├── phase3-docs/            # AI Pattern Discovery documentation
+│   └── 01_correlation_engine.md
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml      # CI/CD pipeline
@@ -221,6 +233,9 @@ Detailed documentation is available in the `phase1-docs/` directory:
 
 **Phase 2: Temporal Alignment**
 - [`01_temporal_alignment.md`](phase2-docs/01_temporal_alignment.md) - Logic for aligning disparate datasets
+
+**Phase 3: AI Pattern Discovery**
+- [`01_correlation_engine.md`](phase3-docs/01_correlation_engine.md) - Correlation analysis and results
 
 
 ## 📜 License
